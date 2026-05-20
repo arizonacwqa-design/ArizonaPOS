@@ -1,0 +1,10 @@
+node_modules/
+dist/
+app/
+dist_electron_old/
+release/
+release-build/
+release-build-v2/
+.env
+.DS_Store
+*.log
