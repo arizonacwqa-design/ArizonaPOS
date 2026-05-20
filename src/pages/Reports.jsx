@@ -1,13 +1,18 @@
 import { useEffect, useState, useMemo } from 'react';
+import { Printer, Download, MessageCircle, X, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { formatCurrency, formatDate, formatStock, isLowStock } from '@/lib/format';
+import { formatCurrency, formatDate, formatDateTime, formatStock, isLowStock } from '@/lib/format';
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import ExportButtons from '@/components/ExportButtons';
 import {
   buildSalesExportRows,
   SALES_EXPORT_COLUMNS,
 } from '@/lib/export';
+import ThermalInvoice from '@/components/ThermalInvoice';
+import A4Invoice from '@/components/A4Invoice';
+import { downloadLuxuryInvoicePdf } from '@/lib/invoicePdf';
+import { buildInvoiceWhatsAppMessage, openWhatsApp } from '@/lib/share';
 
 const TABS = [
   { id: 'daily', label: 'Daily Sales' },
@@ -32,6 +37,64 @@ export default function Reports() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [loading, setLoading] = useState(true);
+  const [reprintSale, setReprintSale] = useState(null);
+  const [reprintItems, setReprintItems] = useState([]);
+  const [reprintLoading, setReprintLoading] = useState(false);
+  const [reprintError, setReprintError] = useState('');
+
+  async function openReprint(sale) {
+    setReprintSale(sale);
+    setReprintItems([]);
+    setReprintError('');
+    setReprintLoading(true);
+    const { data, error } = await supabase
+      .from('sale_items')
+      .select('*, inventory_items(name, stock_type)')
+      .eq('sale_id', sale.id)
+      .order('id');
+    setReprintLoading(false);
+    if (error) {
+      setReprintError(error.message);
+      return;
+    }
+    setReprintItems(data || []);
+  }
+
+  function closeReprint() {
+    setReprintSale(null);
+    setReprintItems([]);
+    setReprintError('');
+  }
+
+  function reprintBrowserPrint(mode) {
+    document.body.classList.remove('print-thermal', 'print-a4');
+    document.body.classList.add(mode === 'a4' ? 'print-a4' : 'print-thermal');
+    if (window.electronAPI?.printInvoice) {
+      window.electronAPI.printInvoice();
+    } else {
+      window.print();
+    }
+    setTimeout(() => {
+      document.body.classList.remove('print-thermal', 'print-a4');
+    }, 500);
+  }
+
+  const reprintInventoryUsage = useMemo(() => {
+    const map = new Map();
+    for (const item of reprintItems) {
+      if (!item.inventory_item_id || !Number(item.inventory_deducted)) continue;
+      const key = item.inventory_item_id;
+      const prev = map.get(key) || {
+        id: key,
+        name: item.inventory_items?.name || item.service_name,
+        stock_type: item.inventory_items?.stock_type || 'quantity',
+        total: 0,
+      };
+      prev.total += Number(item.inventory_deducted) || 0;
+      map.set(key, prev);
+    }
+    return [...map.values()];
+  }, [reprintItems]);
 
   useEffect(() => {
     loadReports();
@@ -171,7 +234,7 @@ export default function Reports() {
             rows={dailyExportRows}
             filenameBase={`daily_sales_${selectedDate}`}
           />
-          <SalesTable data={dailySales} />
+          <SalesTable data={dailySales} onReprint={openReprint} />
         </div>
       )}
 
@@ -206,7 +269,7 @@ export default function Reports() {
             rows={monthlyExportRows}
             filenameBase={`monthly_sales_${selectedMonth}`}
           />
-          <SalesTable data={monthlySales} />
+          <SalesTable data={monthlySales} onReprint={openReprint} />
         </div>
       )}
 
@@ -414,6 +477,23 @@ export default function Reports() {
         </div>
       )}
 
+      <ReprintModal
+        sale={reprintSale}
+        items={reprintItems}
+        inventoryUsage={reprintInventoryUsage}
+        loading={reprintLoading}
+        error={reprintError}
+        onClose={closeReprint}
+        onPrint={reprintBrowserPrint}
+      />
+
+      {reprintSale && (
+        <>
+          <ThermalInvoice sale={reprintSale} items={reprintItems} inventoryUsage={reprintInventoryUsage} />
+          <A4Invoice sale={reprintSale} items={reprintItems} inventoryUsage={reprintInventoryUsage} />
+        </>
+      )}
+
       {tab === 'employees' && (
         <div className="space-y-4">
           <input
@@ -463,7 +543,7 @@ export default function Reports() {
   );
 }
 
-function SalesTable({ data }) {
+function SalesTable({ data, onReprint }) {
   return (
     <div className="card-luxury overflow-x-auto">
       <table className="w-full text-sm">
@@ -474,11 +554,12 @@ function SalesTable({ data }) {
             <th className="text-left py-3 px-2">Car</th>
             <th className="text-left py-3 px-2">Payment</th>
             <th className="text-right py-3 px-2">Total</th>
+            <th className="text-right py-3 px-2 w-32"></th>
           </tr>
         </thead>
         <tbody>
           {data.map((s) => (
-            <tr key={s.id} className="border-b border-luxury-border/50">
+            <tr key={s.id} className="border-b border-luxury-border/50 hover:bg-luxury-slate/40">
               <td className="py-3 px-2">{s.invoice_number}</td>
               <td className="py-3 px-2">{s.customer_name}</td>
               <td className="py-3 px-2 text-luxury-muted">
@@ -488,17 +569,158 @@ function SalesTable({ data }) {
               <td className="py-3 px-2 text-right text-gold-400">
                 {formatCurrency(s.total_amount)}
               </td>
+              <td className="py-3 px-2 text-right">
+                <button
+                  type="button"
+                  onClick={() => onReprint?.(s)}
+                  className="text-gold-400 hover:text-gold-300 text-xs inline-flex items-center gap-1"
+                >
+                  <FileText size={14} /> Reprint
+                </button>
+              </td>
             </tr>
           ))}
           {data.length === 0 && (
             <tr>
-              <td colSpan={5} className="py-8 text-center text-luxury-muted">
+              <td colSpan={6} className="py-8 text-center text-luxury-muted">
                 No sales for this period
               </td>
             </tr>
           )}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function ReprintModal({
+  sale,
+  items,
+  inventoryUsage,
+  loading,
+  error,
+  onClose,
+  onPrint,
+}) {
+  if (!sale) return null;
+  const customerPhone = sale.customer_phone;
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 print:hidden"
+      onClick={onClose}
+    >
+      <div
+        className="card-luxury w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <p className="text-xs uppercase tracking-wider text-gold-500">Invoice</p>
+            <h3 className="text-xl font-display text-gold-400">{sale.invoice_number}</h3>
+            <p className="text-xs text-luxury-muted mt-1">
+              {formatDateTime(sale.sale_date || sale.created_at)}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-luxury-muted hover:text-gold-300 p-1"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="space-y-1 text-sm border border-luxury-border rounded-lg p-3 bg-luxury-slate/40 mb-4">
+          <p><span className="text-luxury-muted">Customer:</span> {sale.customer_name}</p>
+          {sale.customer_phone && (
+            <p><span className="text-luxury-muted">Phone:</span> {sale.customer_phone}</p>
+          )}
+          {(sale.car_model || sale.car_plate) && (
+            <p><span className="text-luxury-muted">Vehicle:</span> {[sale.car_model, sale.car_plate].filter(Boolean).join(' · ')}</p>
+          )}
+          <p className="capitalize"><span className="text-luxury-muted">Payment:</span> {sale.payment_method?.replace('_', ' ')}</p>
+          <p className="text-gold-400 font-semibold">
+            <span className="text-luxury-muted font-normal">Total:</span> {formatCurrency(sale.total_amount)}
+          </p>
+        </div>
+
+        {loading && <p className="text-gold-400 animate-pulse text-sm">Loading invoice items…</p>}
+        {error && <p className="text-red-400 text-sm">{error}</p>}
+
+        {!loading && !error && items.length > 0 && (
+          <ul className="text-xs space-y-1 mb-4 max-h-40 overflow-y-auto border border-luxury-border rounded p-2">
+            {items.map((it) => (
+              <li key={it.id} className="flex justify-between">
+                <span>{it.service_name} ×{it.quantity}</span>
+                <span className="text-gold-400">{formatCurrency(it.line_total)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={loading || !!error}
+              onClick={() => onPrint('thermal')}
+              className="btn-outline flex items-center justify-center gap-2 text-sm"
+            >
+              <Printer size={16} /> Thermal (80mm)
+            </button>
+            <button
+              type="button"
+              disabled={loading || !!error}
+              onClick={() => onPrint('a4')}
+              className="btn-outline flex items-center justify-center gap-2 text-sm"
+            >
+              <Printer size={16} /> A4 Invoice
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={loading || !!error}
+              onClick={() => downloadLuxuryInvoicePdf(sale, items, { format: 'a4' })}
+              className="btn-outline flex items-center justify-center gap-2 text-sm"
+            >
+              <Download size={16} /> PDF (A4)
+            </button>
+            <button
+              type="button"
+              disabled={loading || !!error}
+              onClick={() => downloadLuxuryInvoicePdf(sale, items, { format: 'thermal' })}
+              className="btn-outline flex items-center justify-center gap-2 text-sm"
+            >
+              <Download size={16} /> PDF (Thermal)
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={loading || !!error || !customerPhone}
+              onClick={() => openWhatsApp(customerPhone, buildInvoiceWhatsAppMessage(sale, items))}
+              className="btn-gold flex items-center justify-center gap-2 text-sm py-2"
+            >
+              <MessageCircle size={16} /> WhatsApp Customer
+            </button>
+            <button
+              type="button"
+              disabled={loading || !!error}
+              onClick={() => openWhatsApp(null, buildInvoiceWhatsAppMessage(sale, items))}
+              className="btn-outline flex items-center justify-center gap-2 text-sm"
+            >
+              <MessageCircle size={16} /> Share to Shop
+            </button>
+          </div>
+        </div>
+
+        {inventoryUsage.length > 0 && (
+          <p className="text-[11px] text-luxury-muted mt-3">
+            Inventory used: {inventoryUsage.map((u) => `${u.name} (−${u.total}${u.stock_type === 'meter' ? 'm' : ' pcs'})`).join(', ')}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

@@ -125,18 +125,19 @@ export default function POS() {
   }
 
   function addMaterial(item) {
+    const step = item.stock_type === 'meter' ? 0.5 : 1;
     const key = `mat-${item.id}`;
     const existing = cart.find((c) => cartLineKey(c) === key);
     if (existing) {
       setCart(
         cart.map((c) =>
           cartLineKey(c) === key
-            ? updateCartLineQuantity(c, c.quantity + (item.stock_type === 'meter' ? 1 : 1))
+            ? updateCartLineQuantity(c, c.quantity + step)
             : c
         )
       );
     } else {
-      setCart([...cart, cartLineFromInventory(item, item.stock_type === 'meter' ? 1 : 1)]);
+      setCart([...cart, cartLineFromInventory(item, step)]);
     }
     setMessage('');
   }
@@ -170,6 +171,12 @@ export default function POS() {
     setLoading(true);
     setMessage('');
 
+    const customerId = await upsertCustomerFromSale({
+      customer_name: customer.customer_name,
+      customer_phone: customer.customer_phone,
+      total_amount: billing.total,
+    });
+
     const salePayload = {
       ...customer,
       customer_name: customer.customer_name.trim(),
@@ -181,50 +188,35 @@ export default function POS() {
       payment_method: paymentMethod,
       employee_id: user?.id,
       notes: notes.trim() || null,
+      customer_id: customerId || null,
     };
 
-    let sale;
-    let saleError;
-    ({ data: sale, error: saleError } = await supabase
-      .from('sales')
-      .insert(salePayload)
-      .select()
-      .single());
+    const itemsPayload = saleItemsPayload(cart, null).map(({ sale_id: _ignore, ...rest }) => rest);
 
-    if (saleError?.message?.includes('tax_rate')) {
-      const { tax_rate, tax_amount, ...legacy } = salePayload;
-      ({ data: sale, error: saleError } = await supabase
-        .from('sales')
-        .insert({ ...legacy, total_amount: billing.total })
-        .select()
-        .single());
-    }
-
-    if (saleError) {
-      setMessage(saleError.message);
-      setLoading(false);
-      return;
-    }
-
-    const { data: items, error: itemsError } = await supabase
-      .from('sale_items')
-      .insert(saleItemsPayload(cart, sale.id))
-      .select('*, inventory_items(name, stock_type)');
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('create_sale', {
+      p_sale: salePayload,
+      p_items: itemsPayload,
+    });
 
     setLoading(false);
 
-    if (itemsError) {
-      setMessage(itemsError.message);
+    if (rpcError) {
+      const msg = rpcError.message || '';
+      if (msg.includes('Insufficient stock')) {
+        setMessage(msg.replace(/^.*Insufficient stock/, 'Insufficient stock'));
+      } else if (msg.includes('create_sale') || rpcError.code === 'PGRST202') {
+        setMessage('Database not migrated yet. Admin must run supabase/migrations/006_pos_security_atomicity.sql.');
+      } else {
+        setMessage(msg);
+      }
       return;
     }
 
-    const customerId = await upsertCustomerFromSale({
-      customer_name: customer.customer_name,
-      customer_phone: customer.customer_phone,
-      total_amount: billing.total,
-    });
-    if (customerId) {
-      await supabase.from('sales').update({ customer_id: customerId }).eq('id', sale.id);
+    const sale = rpcResult?.sale;
+    const items = rpcResult?.items || [];
+    if (!sale) {
+      setMessage('Sale was not created. Please try again.');
+      return;
     }
 
     setLastSale(sale);
@@ -542,8 +534,18 @@ export default function POS() {
                     step="0.01"
                     className="input-luxury"
                     value={discount}
-                    onChange={(e) => setDiscount(e.target.value)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === '') return setDiscount('');
+                      const n = Number(v);
+                      setDiscount(Number.isFinite(n) && n >= 0 ? n : 0);
+                    }}
                   />
+                  {billing.discountCapped && (
+                    <p className="text-[11px] text-amber-400 mt-1">
+                      Discount capped at subtotal ({formatCurrency(billing.subtotal)}).
+                    </p>
+                  )}
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <label className="flex items-center gap-2 text-sm text-gold-300 cursor-pointer">
@@ -563,7 +565,12 @@ export default function POS() {
                       step="0.5"
                       className="input-luxury flex-1 min-w-[80px] py-2"
                       value={taxRate}
-                      onChange={(e) => setTaxRate(e.target.value)}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === '') return setTaxRate('');
+                        const n = Number(v);
+                        setTaxRate(Number.isFinite(n) && n >= 0 ? Math.min(n, 100) : 0);
+                      }}
                       placeholder="%"
                     />
                   )}

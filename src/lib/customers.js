@@ -48,14 +48,30 @@ export async function upsertCustomerFromSale({ customer_name, customer_phone, to
   return created?.id ?? null;
 }
 
+/**
+ * PostgREST .or() uses commas and parens as separators. Strip them from user
+ * input so a name like "Khan, Ali)" can't break the filter. Also escape ilike
+ * wildcards so '%' / '_' in the query match literally.
+ */
+function sanitizeOrIlike(s) {
+  return s
+    .replace(/[,()]/g, ' ')
+    .replace(/[\\%_]/g, (m) => `\\${m}`)
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export async function searchCustomers(query, limit = 8) {
   const q = query?.trim();
   if (!q || q.length < 2) return [];
 
+  const safe = sanitizeOrIlike(q);
+  if (!safe) return [];
+
   const { data } = await supabase
     .from('customers')
     .select('id, full_name, phone, total_spent, visit_count')
-    .or(`full_name.ilike.%${q}%,phone.ilike.%${q}%`)
+    .or(`full_name.ilike.%${safe}%,phone.ilike.%${safe}%`)
     .order('last_visit_at', { ascending: false })
     .limit(limit);
 

@@ -64,27 +64,32 @@ export function parseBackupFile(text) {
   return data;
 }
 
-/** Import is insert-only per table; admin should use on empty DB or merge carefully. */
+/**
+ * Atomic restore via the `restore_backup` Postgres RPC.
+ * Function body is a single transaction: any failure rolls back every row.
+ * Covers inventory_items, services, customers, operating_expenses.
+ */
 export async function importDatabaseBackup(backup, { onProgress } = {}) {
-  const results = {};
-  const tables = Object.keys(backup.tables);
+  onProgress?.('restore_backup', 1, 1);
+  const { data, error } = await supabase.rpc('restore_backup', { p_payload: backup });
 
-  for (let i = 0; i < tables.length; i++) {
-    const table = tables[i];
-    const rows = backup.tables[table]?.rows;
-    onProgress?.(table, i + 1, tables.length);
-
-    if (!Array.isArray(rows) || rows.length === 0) {
-      results[table] = { inserted: 0, skipped: true };
-      continue;
+  if (error) {
+    if (error.code === 'PGRST202' || /restore_backup/i.test(error.message || '')) {
+      throw new Error(
+        'Database not migrated yet. Admin must run supabase/migrations/006_pos_security_atomicity.sql.'
+      );
     }
-
-    const { error } = await supabase.from(table).upsert(rows, { onConflict: 'id' });
-    results[table] = error
-      ? { inserted: 0, error: error.message }
-      : { inserted: rows.length };
+    throw new Error(error.message || 'Backup restore failed');
   }
 
+  const results = {};
+  for (const table of Object.keys(backup.tables)) {
+    const requested = backup.tables[table]?.rows?.length || 0;
+    const restored = Number(data?.[table] || 0);
+    results[table] = restored > 0
+      ? { inserted: restored }
+      : { inserted: 0, skipped: requested === 0, error: requested > 0 ? 'not restored (table not handled by RPC)' : undefined };
+  }
   return results;
 }
 

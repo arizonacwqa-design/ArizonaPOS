@@ -104,17 +104,21 @@ export function cartLineKey(line) {
     : `mat-${line.inventory_item_id}`;
 }
 
-/** Subtotal → discount → tax → grand total */
+/** Subtotal → discount → tax → grand total. Caps discount at subtotal and reports the cap. */
 export function calcBillingTotals(subtotal, discount, taxRate, taxEnabled) {
-  const disc = Math.max(0, Number(discount) || 0);
   const base = Math.max(0, Number(subtotal) || 0);
+  const rawDiscount = Math.max(0, Number(discount) || 0);
+  const disc = Math.min(rawDiscount, base);
+  const discountCapped = rawDiscount > base && base > 0;
   const afterDiscount = Math.max(0, base - disc);
-  const rate = taxEnabled ? Math.max(0, Number(taxRate) || 0) : 0;
+  const rate = taxEnabled ? Math.max(0, Math.min(100, Number(taxRate) || 0)) : 0;
   const taxAmount = Math.round(afterDiscount * (rate / 100) * 100) / 100;
   const total = Math.round((afterDiscount + taxAmount) * 100) / 100;
   return {
     subtotal: base,
     discount: disc,
+    rawDiscount,
+    discountCapped,
     taxRate: rate,
     taxAmount,
     total,
