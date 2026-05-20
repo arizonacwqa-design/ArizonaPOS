@@ -77,7 +77,7 @@
 
   .table-luxury th,
   .table-luxury td {
-    @apply py-3 px-3;
+    @apply py-3 px-2 sm:px-3;
   }
 }
 

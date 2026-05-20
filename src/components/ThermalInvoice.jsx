@@ -16,13 +16,13 @@ const ThermalInvoice = forwardRef(function ThermalInvoice(
       className="hidden print:block bg-white text-black p-4 font-mono text-xs invoice-luxury"
       style={{ width: '80mm' }}
     >
-      <div className="text-center mb-3 bg-black text-white -mx-4 -mt-4 px-4 pt-4 pb-3">
+      <div className="text-center mb-3 bg-white -mx-4 -mt-4 px-4 pt-4 pb-3 border-b border-black">
         <img
-          src="/logo.svg"
+          src="/logo.png"
           alt={companyInfo.name}
-          className="w-14 h-14 mx-auto mb-2 object-contain"
+          className="w-20 h-20 mx-auto mb-2 object-contain"
         />
-        <p className="font-bold text-sm uppercase tracking-wide text-amber-400">{companyInfo.name}</p>
+        <p className="font-bold text-sm uppercase tracking-wide text-black">{companyInfo.name}</p>
         <p className="text-[10px] leading-tight mt-1">{companyInfo.address}</p>
         {companyInfo.phone && <p className="text-[10px]">Tel: {companyInfo.phone}</p>}
         {companyInfo.whatsapp && (

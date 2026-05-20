@@ -60,7 +60,9 @@ export default function Login() {
 
       <div className="card-luxury w-full max-w-md mx-4 relative z-10 shadow-gold">
         <div className="flex justify-center mb-6">
-          <Logo size="lg" />
+          <div className="bg-white rounded-2xl p-4 shadow-gold">
+            <Logo size="lg" />
+          </div>
         </div>
 
         <div className="flex rounded-lg border border-luxury-border overflow-hidden mb-6">

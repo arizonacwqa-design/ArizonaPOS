@@ -11,6 +11,26 @@ async function qrDataUrl(text) {
   return QRCode.toDataURL(text, { width: 120, margin: 1, color: { dark: '#0a0a0a', light: '#ffffff' } });
 }
 
+let cachedLogo = null;
+async function loadLogoDataUrl() {
+  if (cachedLogo !== null) return cachedLogo;
+  try {
+    const res = await fetch('/logo.png');
+    if (!res.ok) throw new Error('logo missing');
+    const blob = await res.blob();
+    cachedLogo = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    return cachedLogo;
+  } catch {
+    cachedLogo = '';
+    return '';
+  }
+}
+
 function invoiceQrPayload(sale) {
   return buildInvoiceWhatsAppMessage(sale, []);
 }
@@ -30,41 +50,52 @@ export async function downloadLuxuryInvoicePdf(sale, items, { format = 'a4' } = 
     formatCurrency(sale.total_amount),
     sale.customer_phone || '',
   ].join(' | ');
-  const qr = await qrDataUrl(qrText);
+  const [qr, logo] = await Promise.all([qrDataUrl(qrText), loadLogoDataUrl()]);
 
   let y = 8;
 
   if (isThermal) {
-    doc.setFillColor(...BLACK);
-    doc.rect(0, 0, pageW, 28, 'F');
-    doc.setTextColor(...GOLD);
-    doc.setFontSize(11);
-    doc.text(companyInfo.name, pageW / 2, 10, { align: 'center' });
-    doc.setFontSize(7);
-    doc.setTextColor(220, 220, 220);
-    doc.text(companyInfo.address, pageW / 2, 15, { align: 'center' });
-    if (companyInfo.phone) doc.text(companyInfo.phone, pageW / 2, 19, { align: 'center' });
-    y = 32;
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, pageW, 32, 'F');
+    if (logo) {
+      doc.addImage(logo, 'PNG', pageW / 2 - 9, 3, 18, 18);
+    }
+    doc.setTextColor(...BLACK);
+    doc.setFontSize(9);
+    doc.text(companyInfo.name, pageW / 2, 24, { align: 'center' });
+    doc.setFontSize(6);
+    doc.setTextColor(80, 80, 80);
+    doc.text(companyInfo.address, pageW / 2, 28, { align: 'center' });
+    if (companyInfo.phone) doc.text(companyInfo.phone, pageW / 2, 31, { align: 'center' });
+    y = 36;
   } else {
-    doc.setFillColor(...BLACK);
-    doc.rect(0, 0, pageW, 45, 'F');
-    doc.setTextColor(...GOLD);
-    doc.setFontSize(22);
-    doc.text(companyInfo.name, 14, 18);
-    doc.setFontSize(10);
-    doc.setTextColor(200, 200, 200);
-    doc.text(companyInfo.address, 14, 26);
-    if (companyInfo.phone) doc.text(`Tel: ${companyInfo.phone}`, 14, 32);
-    if (companyInfo.whatsapp) doc.text(`WhatsApp: ${companyInfo.whatsapp}`, 14, 38);
-    doc.setTextColor(...GOLD);
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, pageW, 50, 'F');
+    if (logo) {
+      doc.addImage(logo, 'PNG', 14, 8, 34, 34);
+    }
+    doc.setTextColor(...BLACK);
+    doc.setFontSize(20);
+    doc.text(companyInfo.name, 54, 20);
+    doc.setFontSize(9);
+    doc.setTextColor(90, 90, 90);
+    doc.text(companyInfo.address, 54, 27);
+    if (companyInfo.phone) doc.text(`Tel: ${companyInfo.phone}`, 54, 32);
+    if (companyInfo.whatsapp) doc.text(`WhatsApp: ${companyInfo.whatsapp}`, 54, 37);
     doc.setFontSize(18);
-    doc.text('INVOICE', pageW - 14, 18, { align: 'right' });
+    doc.setTextColor(...GOLD);
+    doc.text('INVOICE', pageW - 40, 14, { align: 'right' });
     doc.setFontSize(11);
-    doc.text(sale.invoice_number, pageW - 14, 26, { align: 'right' });
-    doc.setTextColor(180, 180, 180);
-    doc.text(formatDateTime(sale.sale_date || sale.created_at), pageW - 14, 32, { align: 'right' });
-    doc.addImage(qr, 'PNG', pageW - 42, 8, 28, 28);
-    y = 52;
+    doc.setTextColor(...BLACK);
+    doc.text(sale.invoice_number, pageW - 40, 22, { align: 'right' });
+    doc.setTextColor(120, 120, 120);
+    doc.setFontSize(8);
+    doc.text(formatDateTime(sale.sale_date || sale.created_at), pageW - 40, 28, { align: 'right' });
+    doc.addImage(qr, 'PNG', pageW - 36, 10, 22, 22);
+    doc.setDrawColor(...GOLD);
+    doc.setLineWidth(0.6);
+    doc.line(0, 50, pageW, 50);
+    y = 60;
   }
 
   doc.setTextColor(30, 30, 30);

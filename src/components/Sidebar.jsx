@@ -37,8 +37,10 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 min-h-screen bg-luxury-charcoal border-r border-luxury-border flex flex-col">
-      <div className="p-6 border-b border-luxury-border">
-        <Logo size="md" />
+      <div className="p-5 border-b border-luxury-border flex justify-center">
+        <div className="bg-white rounded-xl p-3 shadow-lg">
+          <Logo size="md" />
+        </div>
       </div>
 
       <nav className="flex-1 p-4 space-y-1">

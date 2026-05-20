@@ -272,9 +272,9 @@ export default function POS() {
         )}
       </header>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Customer + Services */}
-        <div className="xl:col-span-7 space-y-6">
+        <div className="lg:col-span-7 space-y-6">
           {/* Step 1 — Customer */}
           <section className="rounded-2xl border border-luxury-border bg-luxury-charcoal/80 overflow-hidden">
             <div className="flex items-center gap-3 border-b border-gold-600/15 bg-luxury-slate/40 px-5 py-3">
@@ -368,7 +368,7 @@ export default function POS() {
               ))}
             </div>
 
-            <div className="p-5 grid grid-cols-2 md:grid-cols-3 gap-3 max-h-[280px] overflow-y-auto">
+            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-[280px] overflow-y-auto">
               {filteredServices.map((s) => (
                 <button
                   key={s.id}
@@ -420,8 +420,8 @@ export default function POS() {
         </div>
 
         {/* Right: Cart + Invoice */}
-        <div className="xl:col-span-5 space-y-6">
-          <section className="rounded-2xl border border-gold-600/20 bg-luxury-charcoal sticky top-6">
+        <div className="lg:col-span-5 space-y-6">
+          <section className="rounded-2xl border border-gold-600/20 bg-luxury-charcoal lg:sticky lg:top-6">
             <div className="flex items-center gap-3 border-b border-gold-600/15 px-5 py-3">
               <StepBadge n={4} />
               <ShoppingCart className="text-gold-400" size={20} />
@@ -458,6 +458,7 @@ export default function POS() {
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
+                          aria-label="Decrease quantity"
                           onClick={() =>
                             updateQty(
                               item._key,
@@ -478,6 +479,7 @@ export default function POS() {
                         />
                         <button
                           type="button"
+                          aria-label="Increase quantity"
                           onClick={() =>
                             updateQty(
                               item._key,
@@ -491,6 +493,7 @@ export default function POS() {
                       </div>
                       <button
                         type="button"
+                        aria-label={`Remove ${item.service_name} from cart`}
                         onClick={() => removeLine(item._key)}
                         className="text-red-400 hover:text-red-300 p-1"
                       >
@@ -615,7 +618,7 @@ export default function POS() {
               <button
                 type="button"
                 onClick={completeSale}
-                disabled={loading}
+                disabled={loading || cart.length === 0 || !customer.customer_name.trim()}
                 className="btn-gold w-full mt-4 flex items-center justify-center gap-2 py-3"
               >
                 <CheckCircle size={20} />
