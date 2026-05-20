@@ -1,96 +1,55 @@
 {
   "name": "arizona-car-world-pos",
+  "private": true,
   "version": "1.0.0",
-  "description": "POS & Inventory Management for Arizona Car World",
-  "author": "Arizona Car World",
-  "main": "electron/main.js",
   "type": "module",
+  "main": "electron/main.js",
   "scripts": {
-    "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "electron": "electron .",
-    "start": "npm run build && electron .",
-    "icons": "node scripts/generate-icons.mjs",
-    "pack": "npm run dist:check-env && npm run icons && npm run build && electron-builder --win --config electron-builder.config.cjs",
-    "predist": "node scripts/prepare-dist.mjs",
-    "dist": "npm run dist:check-env && npm run icons && npm run build && electron-builder --win --config electron-builder.config.cjs",
-    "dist:check-env": "node scripts/check-env.mjs"
+    "dist": "npm run build && electron-builder",
+    "dist-win": "npm run build && electron-builder --win"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.8",
+    "date-fns": "^4.2.1",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.8",
+    "lucide-react": "^0.511.0",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.6.1",
+    "recharts": "^3.8.1",
+    "xlsx": "^0.18.5",
+    "zustand": "^5.0.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.5.0",
+    "autoprefixer": "^10.4.21",
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3",
+    "postcss": "^8.5.4",
+    "tailwindcss": "^3.4.17",
+    "vite": "^6.4.1"
   },
   "build": {
     "appId": "com.arizonacarworld.pos",
     "productName": "Arizona Car World",
-    "copyright": "Copyright © 2026 Arizona Car World",
-    "asar": true,
-    "compression": "maximum",
     "directories": {
-      "buildResources": "build"
+      "output": "release"
     },
     "files": [
-  "app/**/*",
-  "electron/main.js",
-  "electron/paths.js",
-  "electron/preload.cjs",
-  "build/**/*",
-  "package.json"
-],
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
     "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": ["x64"]
-        }
-      ],
-      "icon": "build/icon.ico",
-      "publisherName": "Arizona Car World",
-      "artifactName": "${productName}-Setup-${version}.${ext}",
-      "requestedExecutionLevel": "asInvoker",
-      "signAndEditExecutable": false
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "allowElevation": true,
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico",
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Arizona Car World",
-      "menuCategory": "Arizona Car World",
-      "runAfterFinish": true,
-      "deleteAppDataOnUninstall": false,
-      "uninstallDisplayName": "Arizona Car World",
-      "installerLanguages": ["en_US"],
-      "language": "1033"
+      "target": "nsis",
+      "icon": "build/icon.ico"
     }
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.49.1",
-    "date-fns": "^4.1.0",
-    "jspdf": "^4.2.1",
-    "jspdf-autotable": "^5.0.8",
-    "lucide-react": "^0.475.0",
-    "qrcode": "^1.5.4",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^7.2.0",
-    "recharts": "^2.15.1",
-    "xlsx": "^0.18.5",
-    "zustand": "^5.0.3"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
-    "autoprefixer": "^10.4.20",
-    "concurrently": "^9.1.2",
-    "electron": "^34.2.0",
-    "electron-builder": "^25.1.8",
-    "png-to-ico": "^3.0.1",
-    "postcss": "^8.5.3",
-    "sharp": "^0.34.5",
-    "tailwindcss": "^3.4.17",
-    "vite": "^6.2.0",
-    "wait-on": "^8.0.2"
   }
 }
