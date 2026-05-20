@@ -13,10 +13,9 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
   }
 
   if (!user || !profile) {
-    window.location.hash = '#/login/employee';
+    window.location.href = '/#/login/employee';
     return null;
   }
-
   if (adminOnly && profile.role !== 'admin') {
     return (
       <div className="p-8">

@@ -23,8 +23,11 @@ const LOGIN_MODES = {
 
 export default function Login() {
   const { role: roleParam } = useParams();
+
   const mode = roleParam === 'admin' ? 'admin' : 'employee';
+
   const config = LOGIN_MODES[mode];
+
   const ModeIcon = config.icon;
 
   const [email, setEmail] = useState('');
@@ -36,14 +39,14 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     setError('');
     setLoading(true);
 
     try {
       await signIn(email.trim(), password, config.expectedRole);
 
-      // Force hash route redirect for mobile + Vercel
-      window.location.hash = '#/';
+      window.location.href = '/#/';
     } catch (err) {
       setError(getAuthErrorMessage(err));
     } finally {
@@ -104,9 +107,7 @@ export default function Login() {
 
         {!isSupabaseConfigured && (
           <p className="text-amber-400 text-sm bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-2 mb-4">
-            Supabase is not configured. Copy{' '}
-            <code className="text-amber-200">.env.example</code> to{' '}
-            <code className="text-amber-200">.env</code> and add your project URL and anon key.
+            Supabase is not configured.
           </p>
         )}
 
@@ -157,7 +158,7 @@ export default function Login() {
         </form>
 
         <p className="text-center text-luxury-muted text-xs mt-6">
-          Secure login powered by Supabase · Session saved on this device
+          Secure login powered by Supabase
         </p>
       </div>
     </div>
