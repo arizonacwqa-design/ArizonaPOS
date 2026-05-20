@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { Shield, User } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { useAuthStore } from '@/store/authStore';
@@ -31,16 +31,19 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
   const signIn = useAuthStore((s) => s.signIn);
-  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+
     try {
       await signIn(email.trim(), password, config.expectedRole);
-      navigate('/', { replace: true });
+
+      // Force hash route redirect for mobile + Vercel
+      window.location.hash = '#/';
     } catch (err) {
       setError(getAuthErrorMessage(err));
     } finally {
@@ -69,6 +72,7 @@ export default function Login() {
             <User size={18} />
             Employee
           </Link>
+
           <Link
             to="/login/admin"
             className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-all ${
@@ -86,15 +90,22 @@ export default function Login() {
           <div className="p-2 rounded-lg bg-gold-600/15 border border-gold-600/30">
             <ModeIcon className="text-gold-400" size={22} />
           </div>
+
           <div>
-            <h2 className="text-xl font-display text-gold-400">{config.title}</h2>
-            <p className="text-xs text-luxury-muted">{config.description}</p>
+            <h2 className="text-xl font-display text-gold-400">
+              {config.title}
+            </h2>
+
+            <p className="text-xs text-luxury-muted">
+              {config.description}
+            </p>
           </div>
         </div>
 
         {!isSupabaseConfigured && (
           <p className="text-amber-400 text-sm bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-2 mb-4">
-            Supabase is not configured. Copy <code className="text-amber-200">.env.example</code> to{' '}
+            Supabase is not configured. Copy{' '}
+            <code className="text-amber-200">.env.example</code> to{' '}
             <code className="text-amber-200">.env</code> and add your project URL and anon key.
           </p>
         )}
@@ -102,6 +113,7 @@ export default function Login() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="label-luxury">Email</label>
+
             <input
               type="email"
               className="input-luxury"
@@ -113,8 +125,10 @@ export default function Login() {
               disabled={loading}
             />
           </div>
+
           <div>
             <label className="label-luxury">Password</label>
+
             <input
               type="password"
               className="input-luxury"

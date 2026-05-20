@@ -13,7 +13,8 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
   }
 
   if (!user || !profile) {
-    return <Navigate to="/login/employee" replace />;
+    window.location.hash = '#/login/employee';
+    return null;
   }
 
   if (adminOnly && profile.role !== 'admin') {
