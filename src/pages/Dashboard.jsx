@@ -137,9 +137,6 @@ export default function Dashboard() {
     setLoading(false);
   }
 
-  const monthSales = (saleTotal || 0);
-  const monthExpenses = (expenseTotal || 0);
-  const monthOperating = (operatingTotal || 0);
   const profit = monthSales - monthExpenses - monthOperating;
 
   if (loading) {
