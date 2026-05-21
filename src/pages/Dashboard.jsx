@@ -20,6 +20,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { supabase } from '@/lib/supabase';
+import { useThemeStore } from '@/store/themeStore';
 import { formatCurrency, formatStock, isLowStock } from '@/lib/format';
 import StatCard from '@/components/StatCard';
 import LowStockBanner from '@/components/LowStockBanner';
@@ -28,6 +29,8 @@ import { StatCardSkeleton, PageHeaderSkeleton } from '@/components/LoadingSkelet
 import { startOfDay, startOfMonth, subDays, format, parseISO } from 'date-fns';
 
 export default function Dashboard() {
+  const theme = useThemeStore((s) => s.theme);
+  const isDark = theme === 'dark';
   const [todaySales, setTodaySales] = useState(0);
   const [monthSales, setMonthSales] = useState(0);
   const [monthExpenses, setMonthExpenses] = useState(0);
@@ -205,10 +208,15 @@ export default function Dashboard() {
           <h2 className="text-lg font-semibold text-gold-400 mb-4">Daily Sales — Last 7 Days</h2>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={chartData}>
-              <XAxis dataKey="day" stroke="#888" />
-              <YAxis stroke="#888" />
+              <XAxis dataKey="day" stroke={isDark ? '#888' : '#666'} />
+              <YAxis stroke={isDark ? '#888' : '#666'} />
               <Tooltip
-                contentStyle={{ background: '#141414', border: '1px solid #c9a227' }}
+                contentStyle={{
+                  background: isDark ? '#141414' : '#ffffff',
+                  border: '1px solid #c9a227',
+                  color: isDark ? '#fff' : '#1a1a1a',
+                }}
+                labelStyle={{ color: isDark ? '#fff' : '#1a1a1a' }}
                 formatter={(v) => [formatCurrency(v), 'Sales']}
               />
               <Bar dataKey="sales" fill="#c9a227" radius={[4, 4, 0, 0]} />

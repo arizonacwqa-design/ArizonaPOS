@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import Logo from './Logo';
+import ThemeToggle from './ThemeToggle';
 import { useAuthStore } from '@/store/authStore';
 
 const navItems = [
@@ -112,9 +113,12 @@ export default function Sidebar({
 
         <div className="p-3 border-t border-luxury-border">
           <div className={`px-3 py-2 mb-2 ${collapsed ? 'lg:hidden' : ''}`}>
-            <p className="text-sm text-white font-medium truncate">{profile?.full_name}</p>
+            <p className="text-sm text-luxury-foreground font-medium truncate">{profile?.full_name}</p>
             <p className="text-xs text-gold-500 capitalize">{profile?.role}</p>
           </div>
+
+          <ThemeToggle variant="sidebar" collapsed={collapsed} />
+
           <button
             type="button"
             onClick={handleSignOut}
