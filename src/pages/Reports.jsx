@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Printer, Download, MessageCircle, X, FileText } from 'lucide-react';
+import { Printer, Download, MessageCircle, X, FileText, Search } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatCurrency, formatDate, formatDateTime, formatStock, isLowStock } from '@/lib/format';
@@ -17,6 +17,8 @@ import { buildInvoiceWhatsAppMessage, openWhatsApp } from '@/lib/share';
 const TABS = [
   { id: 'daily', label: 'Daily Sales' },
   { id: 'monthly', label: 'Monthly Sales' },
+  { id: 'search', label: 'Search Bills' },
+  { id: 'vehicle', label: 'Vehicle History' },
   { id: 'expenses', label: 'Expenses', adminOnly: true },
   { id: 'inventory', label: 'Inventory' },
   { id: 'lowstock', label: 'Low Stock' },
@@ -37,6 +39,8 @@ export default function Reports() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [vehicleQuery, setVehicleQuery] = useState('');
   const [reprintSale, setReprintSale] = useState(null);
   const [reprintItems, setReprintItems] = useState([]);
   const [reprintLoading, setReprintLoading] = useState(false);
@@ -179,6 +183,44 @@ export default function Reports() {
   const dailyExportRows = buildSalesExportRows(dailySales);
   const monthlyExportRows = buildSalesExportRows(monthlySales);
 
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return sales
+      .filter(
+        (s) =>
+          s.invoice_number?.toLowerCase().includes(q) ||
+          s.customer_name?.toLowerCase().includes(q) ||
+          s.customer_phone?.toLowerCase().includes(q) ||
+          s.car_plate?.toLowerCase().includes(q) ||
+          s.car_model?.toLowerCase().includes(q)
+      )
+      .slice(0, 100);
+  }, [sales, searchQuery]);
+
+  const vehicleResults = useMemo(() => {
+    const q = vehicleQuery.trim().toLowerCase();
+    if (!q) return [];
+    return sales.filter(
+      (s) =>
+        s.car_plate?.toLowerCase().includes(q) ||
+        s.car_model?.toLowerCase().includes(q)
+    );
+  }, [sales, vehicleQuery]);
+
+  const vehicleStats = useMemo(() => {
+    if (!vehicleResults.length) return null;
+    const total = vehicleResults.reduce((s, r) => s + Number(r.total_amount || 0), 0);
+    const first = vehicleResults[vehicleResults.length - 1];
+    const last = vehicleResults[0];
+    return {
+      visits: vehicleResults.length,
+      total,
+      firstVisit: first.sale_date || first.created_at,
+      lastVisit: last.sale_date || last.created_at,
+    };
+  }, [vehicleResults]);
+
   const expenseExportColumns = [
     { header: 'Date', accessor: (r) => formatDate(r.purchase_date) },
     { header: 'Bill', accessor: (r) => r.bill_number || '—' },
@@ -192,10 +234,10 @@ export default function Reports() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
       <header className="mb-6">
-        <h1 className="text-3xl font-display text-gold-400">Reports</h1>
-        <p className="text-luxury-muted">Export daily/monthly sales, inventory, and expenses</p>
+        <h1 className="text-2xl sm:text-3xl font-display font-bold text-gold-400">Reports</h1>
+        <p className="text-luxury-muted text-sm sm:text-base">Export daily/monthly sales, inventory, and expenses</p>
       </header>
 
       <div className="flex flex-wrap gap-2 mb-6">
@@ -270,6 +312,77 @@ export default function Reports() {
             filenameBase={`monthly_sales_${selectedMonth}`}
           />
           <SalesTable data={monthlySales} onReprint={openReprint} />
+        </div>
+      )}
+
+      {tab === 'search' && (
+        <div className="space-y-4">
+          <div className="relative max-w-lg">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-luxury-muted" size={18} />
+            <input
+              className="input-luxury pl-10"
+              autoFocus
+              placeholder="Invoice #, customer name, phone, or plate…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          {searchQuery.trim() === '' ? (
+            <p className="text-luxury-muted text-sm">
+              Type to find any past invoice. Up to 100 results shown.
+            </p>
+          ) : (
+            <>
+              <p className="text-luxury-muted text-xs">
+                {searchResults.length} result{searchResults.length === 1 ? '' : 's'}
+              </p>
+              <SalesTable data={searchResults} onReprint={openReprint} />
+            </>
+          )}
+        </div>
+      )}
+
+      {tab === 'vehicle' && (
+        <div className="space-y-4">
+          <div className="relative max-w-lg">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-luxury-muted" size={18} />
+            <input
+              className="input-luxury pl-10"
+              autoFocus
+              placeholder="Plate number or car model…"
+              value={vehicleQuery}
+              onChange={(e) => setVehicleQuery(e.target.value)}
+            />
+          </div>
+          {!vehicleQuery.trim() ? (
+            <p className="text-luxury-muted text-sm">
+              Look up every service done on a specific car. Search by plate or model.
+            </p>
+          ) : vehicleStats ? (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                <div className="card-luxury p-4">
+                  <p className="text-luxury-muted text-xs">Visits</p>
+                  <p className="text-2xl font-bold text-gold-400">{vehicleStats.visits}</p>
+                </div>
+                <div className="card-luxury p-4">
+                  <p className="text-luxury-muted text-xs">Total Spent</p>
+                  <p className="text-2xl font-bold text-gold-400">{formatCurrency(vehicleStats.total)}</p>
+                </div>
+                <div className="card-luxury p-4">
+                  <p className="text-luxury-muted text-xs">First Visit</p>
+                  <p className="text-sm font-medium">{formatDate(vehicleStats.firstVisit)}</p>
+                </div>
+                <div className="card-luxury p-4">
+                  <p className="text-luxury-muted text-xs">Last Visit</p>
+                  <p className="text-sm font-medium">{formatDate(vehicleStats.lastVisit)}</p>
+                </div>
+              </div>
+              <SalesTable data={vehicleResults} onReprint={openReprint} />
+            </>
+          ) : (
+            <p className="text-luxury-muted text-sm">No services match "{vehicleQuery}".</p>
+          )}
         </div>
       )}
 
@@ -606,23 +719,24 @@ function ReprintModal({
   const customerPhone = sale.customer_phone;
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 print:hidden"
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-2 sm:p-4 print:hidden"
       onClick={onClose}
     >
       <div
-        className="card-luxury w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        className="card-luxury w-full max-w-3xl max-h-[95vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-start mb-4">
           <div>
-            <p className="text-xs uppercase tracking-wider text-gold-500">Invoice</p>
-            <h3 className="text-xl font-display text-gold-400">{sale.invoice_number}</h3>
+            <p className="text-xs uppercase tracking-wider text-gold-500">Invoice Preview</p>
+            <h3 className="text-xl font-display text-gold-400 font-bold">{sale.invoice_number}</h3>
             <p className="text-xs text-luxury-muted mt-1">
               {formatDateTime(sale.sale_date || sale.created_at)}
             </p>
           </div>
           <button
             type="button"
+            aria-label="Close invoice"
             onClick={onClose}
             className="text-luxury-muted hover:text-gold-300 p-1"
           >
@@ -630,33 +744,112 @@ function ReprintModal({
           </button>
         </div>
 
-        <div className="space-y-1 text-sm border border-luxury-border rounded-lg p-3 bg-luxury-slate/40 mb-4">
-          <p><span className="text-luxury-muted">Customer:</span> {sale.customer_name}</p>
-          {sale.customer_phone && (
-            <p><span className="text-luxury-muted">Phone:</span> {sale.customer_phone}</p>
+        {/* Invoice preview pane — mimics the printed A4 look on a light card */}
+        <div className="bg-white text-gray-900 rounded-xl border-2 border-gold-600/30 p-5 sm:p-6 mb-4 shadow-inner">
+          <header className="flex flex-wrap justify-between items-start gap-3 border-b-2 border-amber-700 pb-3 mb-4">
+            <div className="flex items-center gap-3">
+              <img src="/logo.png" alt="Arizona Car World" className="w-14 h-14 object-contain" />
+              <div>
+                <p className="font-bold text-sm sm:text-base text-gray-900">Arizona Car World</p>
+                <p className="text-[11px] text-gray-600">Detailing · PPF · Tint</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-lg sm:text-xl font-bold text-amber-700">INVOICE</p>
+              <p className="font-mono text-sm text-gray-900">{sale.invoice_number}</p>
+              <p className="text-[11px] text-gray-500">
+                {formatDateTime(sale.sale_date || sale.created_at)}
+              </p>
+            </div>
+          </header>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm mb-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold mb-1">
+                Bill To
+              </p>
+              <p className="font-semibold">{sale.customer_name}</p>
+              {sale.customer_phone && <p className="text-gray-700">{sale.customer_phone}</p>}
+              {(sale.car_model || sale.car_plate) && (
+                <p className="text-gray-600">
+                  Vehicle: {[sale.car_model, sale.car_plate].filter(Boolean).join(' · ')}
+                </p>
+              )}
+            </div>
+            <div className="sm:text-right">
+              <p className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold mb-1">
+                Payment
+              </p>
+              <p className="capitalize font-medium">{sale.payment_method?.replace('_', ' ')}</p>
+            </div>
+          </div>
+
+          {loading && <p className="text-gray-500 text-sm">Loading invoice items…</p>}
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+
+          {!loading && !error && (
+            <>
+              <table className="w-full text-xs sm:text-sm mb-4">
+                <thead>
+                  <tr className="bg-amber-50 border-y border-amber-200">
+                    <th className="text-left py-2 px-2">Description</th>
+                    <th className="text-center py-2 px-2 w-12">Qty</th>
+                    <th className="text-right py-2 px-2 w-20">Unit</th>
+                    <th className="text-right py-2 px-2 w-24">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((it) => (
+                    <tr key={it.id} className="border-b border-gray-100">
+                      <td className="py-2 px-2">{it.service_name}</td>
+                      <td className="text-center py-2 px-2">{it.quantity}</td>
+                      <td className="text-right py-2 px-2">{formatCurrency(it.unit_price)}</td>
+                      <td className="text-right py-2 px-2 font-medium">
+                        {Number(it.line_total) > 0 ? formatCurrency(it.line_total) : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                  {items.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="py-4 text-center text-gray-500">No items</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+
+              <div className="flex justify-end">
+                <div className="w-full sm:w-64 space-y-1 text-xs sm:text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span>{formatCurrency(sale.subtotal)}</span>
+                  </div>
+                  {Number(sale.discount) > 0 && (
+                    <div className="flex justify-between text-red-700">
+                      <span>Discount</span>
+                      <span>−{formatCurrency(sale.discount)}</span>
+                    </div>
+                  )}
+                  {Number(sale.tax_amount) > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Tax ({sale.tax_rate}%)</span>
+                      <span>{formatCurrency(sale.tax_amount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold text-amber-800 border-t-2 border-amber-700 pt-1.5 text-base">
+                    <span>Total</span>
+                    <span>{formatCurrency(sale.total_amount)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {sale.notes && (
+                <p className="text-xs text-gray-600 mt-3 border-t border-gray-200 pt-2">
+                  <strong>Notes:</strong> {sale.notes}
+                </p>
+              )}
+            </>
           )}
-          {(sale.car_model || sale.car_plate) && (
-            <p><span className="text-luxury-muted">Vehicle:</span> {[sale.car_model, sale.car_plate].filter(Boolean).join(' · ')}</p>
-          )}
-          <p className="capitalize"><span className="text-luxury-muted">Payment:</span> {sale.payment_method?.replace('_', ' ')}</p>
-          <p className="text-gold-400 font-semibold">
-            <span className="text-luxury-muted font-normal">Total:</span> {formatCurrency(sale.total_amount)}
-          </p>
         </div>
-
-        {loading && <p className="text-gold-400 animate-pulse text-sm">Loading invoice items…</p>}
-        {error && <p className="text-red-400 text-sm">{error}</p>}
-
-        {!loading && !error && items.length > 0 && (
-          <ul className="text-xs space-y-1 mb-4 max-h-40 overflow-y-auto border border-luxury-border rounded p-2">
-            {items.map((it) => (
-              <li key={it.id} className="flex justify-between">
-                <span>{it.service_name} ×{it.quantity}</span>
-                <span className="text-gold-400">{formatCurrency(it.line_total)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
 
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">

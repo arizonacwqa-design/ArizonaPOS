@@ -99,9 +99,9 @@ export default function Purchases() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
       <header className="mb-6">
-        <h1 className="text-3xl font-display text-gold-400">Inventory Purchases</h1>
+        <h1 className="text-2xl sm:text-3xl font-display font-bold text-gold-400">Inventory Purchases</h1>
         <p className="text-luxury-muted">
           Stock IN with bill number, supplier, date, and expense tracking
         </p>

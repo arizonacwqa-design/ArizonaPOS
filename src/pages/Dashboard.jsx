@@ -147,17 +147,17 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-8 animate-fade-in">
-      <header className="mb-8">
-        <h1 className="text-3xl font-display text-gold-400">Dashboard</h1>
-        <p className="text-luxury-muted mt-1">Arizona Car World — analytics & alerts</p>
+    <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
+      <header className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-display font-bold text-gold-400">Dashboard</h1>
+        <p className="text-luxury-muted mt-1 text-sm sm:text-base">Arizona Car World — analytics & alerts</p>
       </header>
 
       {!bannerDismissed && (
         <LowStockBanner items={lowStockItems} onDismiss={() => setBannerDismissed(true)} />
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <StatCard title="Today's Sales" value={formatCurrency(todaySales)} icon={DollarSign} />
         <StatCard title="Monthly Sales" value={formatCurrency(monthSales)} icon={TrendingUp} />
         <StatCard

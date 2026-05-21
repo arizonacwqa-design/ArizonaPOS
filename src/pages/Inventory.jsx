@@ -64,10 +64,10 @@ export default function Inventory() {
   const qtyItems = items.filter((i) => i.stock_type === 'quantity');
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-display text-gold-400">Inventory</h1>
+          <h1 className="text-2xl sm:text-3xl font-display font-bold text-gold-400">Inventory</h1>
           <p className="text-luxury-muted">
             Meter: PPF & Tint rolls · Quantity: shampoo, polish, chemicals, bottles, lighters
           </p>

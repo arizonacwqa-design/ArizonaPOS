@@ -43,9 +43,20 @@ export async function upsertCustomerFromSale({ customer_name, customer_phone, to
 
   if (error) {
     console.warn('Customer upsert skipped:', error.message);
-    return null;
+    const wrapped = new Error(error.message || 'Customer save failed');
+    wrapped.customerSaveFailed = true;
+    wrapped.code = error.code;
+    throw wrapped;
   }
   return created?.id ?? null;
+}
+
+export async function updateCustomer(id, patch) {
+  const { error } = await supabase
+    .from('customers')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw new Error(error.message || 'Failed to update customer');
 }
 
 /**
@@ -95,12 +106,15 @@ export async function getCustomerHistory(phoneOrId) {
     .order('created_at', { ascending: false })
     .limit(50);
 
+  // BUG FIX: Supabase query builders are immutable — chained calls return a new
+  // builder. Previously these .eq() calls were discarded, returning all 50 latest
+  // sales regardless of which customer was clicked.
   if (customer?.id) {
-    salesQuery.eq('customer_id', customer.id);
+    salesQuery = salesQuery.eq('customer_id', customer.id);
   } else if (customer?.phone) {
-    salesQuery.eq('customer_phone', customer.phone);
+    salesQuery = salesQuery.eq('customer_phone', customer.phone);
   } else if (phoneOrId) {
-    salesQuery.eq('customer_phone', phoneOrId);
+    salesQuery = salesQuery.eq('customer_phone', phoneOrId);
   } else {
     return { customer: null, sales: [] };
   }

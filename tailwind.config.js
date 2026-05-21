@@ -25,8 +25,8 @@ export default {
         },
       },
       fontFamily: {
-        display: ['Georgia', 'serif'],
-        sans: ['Segoe UI', 'system-ui', 'sans-serif'],
+        display: ['Outfit', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
       },
       boxShadow: {
         gold: '0 0 30px rgba(201, 162, 39, 0.15)',

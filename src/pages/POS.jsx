@@ -56,6 +56,7 @@ export default function POS() {
   const [customer, setCustomer] = useState(emptyCustomer);
   const [notes, setNotes] = useState('');
   const [discount, setDiscount] = useState(0);
+  const [discountType, setDiscountType] = useState('flat'); // 'flat' | 'percent'
   const [taxEnabled, setTaxEnabled] = useState(DEFAULT_TAX_RATE > 0);
   const [taxRate, setTaxRate] = useState(DEFAULT_TAX_RATE);
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -91,8 +92,8 @@ export default function POS() {
 
   const subtotal = cart.reduce((sum, item) => sum + item.line_total, 0);
   const billing = useMemo(
-    () => calcBillingTotals(subtotal, discount, taxRate, taxEnabled),
-    [subtotal, discount, taxRate, taxEnabled]
+    () => calcBillingTotals(subtotal, discount, taxRate, taxEnabled, discountType),
+    [subtotal, discount, taxRate, taxEnabled, discountType]
   );
   const inventoryUsage = useMemo(() => aggregateInventoryUsage(cart), [cart]);
   const selectedInventoryIds = useMemo(
@@ -171,11 +172,21 @@ export default function POS() {
     setLoading(true);
     setMessage('');
 
-    const customerId = await upsertCustomerFromSale({
-      customer_name: customer.customer_name,
-      customer_phone: customer.customer_phone,
-      total_amount: billing.total,
-    });
+    let customerId = null;
+    let customerWarning = '';
+    try {
+      customerId = await upsertCustomerFromSale({
+        customer_name: customer.customer_name,
+        customer_phone: customer.customer_phone,
+        total_amount: billing.total,
+      });
+    } catch (e) {
+      // Don't block the sale — record a warning we'll show with the success message.
+      customerWarning =
+        e?.code === 'PGRST205' || /relation .* does not exist/i.test(e?.message || '')
+          ? 'Sale saved, but customers table is missing — run migration 005.'
+          : `Sale saved, but customer record not created: ${e?.message || 'unknown error'}`;
+    }
 
     const salePayload = {
       ...customer,
@@ -222,7 +233,11 @@ export default function POS() {
     setLastSale(sale);
     setLastItems(items);
     setLastInventoryUsage(inventoryUsage);
-    setMessage(`Invoice ${sale.invoice_number} saved — stock updated automatically`);
+    setMessage(
+      customerWarning
+        ? `Invoice ${sale.invoice_number} saved — ${customerWarning}`
+        : `Invoice ${sale.invoice_number} saved — stock updated automatically`
+    );
     setCart([]);
     setCustomer(emptyCustomer);
     setNotes('');
@@ -257,11 +272,11 @@ export default function POS() {
   return (
     <div className="min-h-full p-4 sm:p-6 lg:p-8 animate-fade-in">
       {/* Header */}
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+      <header className="mb-6 lg:mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-gold-500 mb-1">Point of Sale</p>
-          <h1 className="text-3xl lg:text-4xl font-display text-gold-400">POS Billing</h1>
-          <p className="text-luxury-muted mt-1 max-w-xl">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-gold-400">POS Billing</h1>
+          <p className="text-luxury-muted mt-1 max-w-xl text-sm sm:text-base">
             Create invoices, link services to inventory, and auto-deduct meter & quantity stock on save
           </p>
         </div>
@@ -530,10 +545,39 @@ export default function POS() {
                   <span>{formatCurrency(billing.subtotal)}</span>
                 </div>
                 <div>
-                  <label className="label-luxury">Discount (QAR)</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="label-luxury mb-0">
+                      Discount {discountType === 'percent' ? '(%)' : '(QAR)'}
+                    </label>
+                    <div className="inline-flex rounded-md overflow-hidden border border-luxury-border text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => setDiscountType('flat')}
+                        className={`px-2 py-0.5 ${
+                          discountType === 'flat'
+                            ? 'bg-gold-600/25 text-gold-300'
+                            : 'text-luxury-muted hover:text-gold-300'
+                        }`}
+                      >
+                        QAR
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDiscountType('percent')}
+                        className={`px-2 py-0.5 ${
+                          discountType === 'percent'
+                            ? 'bg-gold-600/25 text-gold-300'
+                            : 'text-luxury-muted hover:text-gold-300'
+                        }`}
+                      >
+                        %
+                      </button>
+                    </div>
+                  </div>
                   <input
                     type="number"
                     min="0"
+                    max={discountType === 'percent' ? '100' : undefined}
                     step="0.01"
                     className="input-luxury"
                     value={discount}
@@ -541,9 +585,15 @@ export default function POS() {
                       const v = e.target.value;
                       if (v === '') return setDiscount('');
                       const n = Number(v);
-                      setDiscount(Number.isFinite(n) && n >= 0 ? n : 0);
+                      const max = discountType === 'percent' ? 100 : Infinity;
+                      setDiscount(Number.isFinite(n) && n >= 0 ? Math.min(n, max) : 0);
                     }}
                   />
+                  {discountType === 'percent' && billing.rawDiscount > 0 && (
+                    <p className="text-[11px] text-gold-300/80 mt-1">
+                      = {formatCurrency(billing.rawDiscount)} off
+                    </p>
+                  )}
                   {billing.discountCapped && (
                     <p className="text-[11px] text-amber-400 mt-1">
                       Discount capped at subtotal ({formatCurrency(billing.subtotal)}).

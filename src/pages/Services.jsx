@@ -94,7 +94,7 @@ export default function Services() {
 
   if (!isAdmin) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <p className="text-red-400">Only admins can manage services.</p>
       </div>
     );
