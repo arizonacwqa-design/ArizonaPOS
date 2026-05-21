@@ -106,7 +106,7 @@ export default function Reports() {
 
   async function loadReports() {
     setLoading(true);
-    const [salesRes, itemsRes, invRes, profRes, purchRes, usageRes] = await Promise.all([
+    const [salesRes, itemsRes, invRes, profRes, purchRes] = await Promise.all([
       supabase
         .from('sales')
         .select('*, profiles(full_name)')
@@ -118,14 +118,33 @@ export default function Reports() {
         .from('inventory_purchases')
         .select('*, inventory_items(name)')
         .order('purchase_date', { ascending: false }),
-      supabase.from('inventory_usage_report').select('*').limit(500),
     ]);
+    
+    // Calculate inventory usage client-side since materialized view doesn't exist
+    const usageMap = new Map();
+    (itemsRes.data || []).forEach(item => {
+      if (!item.inventory_item_id || !Number(item.inventory_deducted)) return;
+      const key = item.inventory_item_id;
+      if (!usageMap.has(key)) {
+        const invItem = (invRes.data || []).find(i => i.id === key);
+        usageMap.set(key, {
+          inventory_item_id: key,
+          name: invItem?.name || 'Unknown',
+          stock_type: invItem?.stock_type || 'quantity',
+          total_deducted: 0,
+        });
+      }
+      const entry = usageMap.get(key);
+      entry.total_deducted += Number(item.inventory_deducted) || 0;
+    });
+    const usageData = Array.from(usageMap.values()).sort((a, b) => b.total_deducted - a.total_deducted);
+    
     setSales(salesRes.data || []);
     setSaleItems(itemsRes.data || []);
     setInventory(invRes.data || []);
     setProfiles(profRes.data || []);
     setPurchases(purchRes.data || []);
-    setInventoryUsage(usageRes.data || []);
+    setInventoryUsage(usageData);
     setLoading(false);
   }
 

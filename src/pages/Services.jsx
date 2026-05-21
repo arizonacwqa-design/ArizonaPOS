@@ -62,12 +62,19 @@ export default function Services() {
     e.preventDefault();
     if (!isAdmin) return;
 
+    // Validate consumption_per_unit is not negative
+    const consumption = Number(form.consumption_per_unit) || 0;
+    if (consumption < 0) {
+      setMessage('Consumption per unit cannot be negative');
+      return;
+    }
+
     const payload = {
       name: form.name.trim(),
       price: Number(form.price) || 0,
       category: form.category,
       inventory_item_id: form.inventory_item_id || null,
-      consumption_per_unit: Number(form.consumption_per_unit) || 0,
+      consumption_per_unit: consumption,
       is_active: form.is_active,
     };
 

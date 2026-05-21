@@ -92,7 +92,10 @@ export async function searchCustomers(query, limit = 8) {
 export async function getCustomerHistory(phoneOrId) {
   let customer = null;
 
-  if (String(phoneOrId).includes('-')) {
+  // Check if it's a UUID (contains hyphens in specific pattern: 8-4-4-4-12)
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(phoneOrId));
+  
+  if (isUUID) {
     const { data } = await supabase.from('customers').select('*').eq('id', phoneOrId).maybeSingle();
     customer = data;
   } else if (phoneOrId) {

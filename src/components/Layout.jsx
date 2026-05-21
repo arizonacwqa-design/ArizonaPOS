@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import Sidebar from './Sidebar';
@@ -20,6 +20,7 @@ export default function Layout() {
     }
   });
   const [mobileOpen, setMobileOpen] = useState(false);
+  const backupPromptShown = useRef(false);
 
   const toggleCollapse = () => {
     setCollapsed((c) => {
@@ -43,7 +44,9 @@ export default function Layout() {
   }, [mobileOpen]);
 
   useEffect(() => {
-    if (isAdmin() && shouldRunAutoBackup()) {
+    // Only show backup prompt once per session
+    if (!backupPromptShown.current && isAdmin() && shouldRunAutoBackup()) {
+      backupPromptShown.current = true;
       const ok = window.confirm(
         'Daily backup recommended. Export a backup of your database now?'
       );

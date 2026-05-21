@@ -154,8 +154,13 @@ export default function POS() {
   }
 
   async function completeSale() {
-    if (!customer.customer_name.trim()) {
+    const name = customer.customer_name.trim();
+    if (!name) {
       setMessage('Customer name is required');
+      return;
+    }
+    if (name.length > 100) {
+      setMessage('Customer name must be 100 characters or less');
       return;
     }
     if (cart.length === 0) {
@@ -213,13 +218,18 @@ export default function POS() {
 
     if (rpcError) {
       const msg = rpcError.message || '';
+      let errorMsg = msg;
+      
       if (msg.includes('Insufficient stock')) {
-        setMessage(msg.replace(/^.*Insufficient stock/, 'Insufficient stock'));
+        // Preserve full error details for insufficient stock
+        errorMsg = msg;
       } else if (msg.includes('create_sale') || rpcError.code === 'PGRST202') {
-        setMessage('Database not migrated yet. Admin must run supabase/migrations/006_pos_security_atomicity.sql.');
-      } else {
-        setMessage(msg);
+        errorMsg = 'Sale creation RPC not available. Admin must run migrations (006_pos_security_atomicity.sql).';
+      } else if (msg.includes('Not authorized')) {
+        errorMsg = 'You do not have permission to create sales.';
       }
+      
+      setMessage(errorMsg);
       return;
     }
 

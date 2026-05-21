@@ -116,7 +116,7 @@ export default function InventoryAddForm({ mode = 'add', item, onSuccess, onCanc
       name,
       category: form.category,
       stock_type: form.stock_type,
-      current_stock: stockAmount > 0 ? 0 : stockAmount,
+      current_stock: stockAmount > 0 ? stockAmount : 0,
       low_stock_threshold: Number(form.low_stock_threshold) || 5,
       unit_label: form.stock_type === 'meter' ? 'm' : 'pcs',
     };
@@ -148,8 +148,11 @@ export default function InventoryAddForm({ mode = 'add', item, onSuccess, onCanc
         .insert(purchasePayload);
 
       if (purchaseError) {
-        await supabase.from('inventory_items').delete().eq('id', newItem.id);
-        throw purchaseError;
+        const { error: deleteError } = await supabase.from('inventory_items').delete().eq('id', newItem.id);
+        const errorMsg = deleteError 
+          ? `Purchase failed: ${purchaseError.message}. Rollback also failed: ${deleteError.message}`
+          : `Purchase creation failed: ${purchaseError.message}`;
+        throw new Error(errorMsg);
       }
     }
 

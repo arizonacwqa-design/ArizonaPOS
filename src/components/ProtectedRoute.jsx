@@ -1,7 +1,8 @@
-import { Navigate, Link } from 'react-router-dom';
+import { Navigate, Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 
 export default function ProtectedRoute({ children, adminOnly = false }) {
+  const navigate = useNavigate();
   const { user, profile, loading } = useAuthStore();
 
   if (loading) {
@@ -13,7 +14,7 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
   }
 
   if (!user || !profile) {
-    window.location.href = '/#/login/employee';
+    navigate('/login/employee');
     return null;
   }
   if (adminOnly && profile.role !== 'admin') {

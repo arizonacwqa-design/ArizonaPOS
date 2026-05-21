@@ -25,7 +25,7 @@ import StatCard from '@/components/StatCard';
 import LowStockBanner from '@/components/LowStockBanner';
 import LuxuryTable from '@/components/LuxuryTable';
 import { StatCardSkeleton, PageHeaderSkeleton } from '@/components/LoadingSkeleton';
-import { startOfDay, startOfMonth, subDays, format } from 'date-fns';
+import { startOfDay, startOfMonth, subDays, format, parseISO } from 'date-fns';
 
 export default function Dashboard() {
   const [todaySales, setTodaySales] = useState(0);
@@ -48,7 +48,7 @@ export default function Dashboard() {
     setLoading(true);
     const today = startOfDay(new Date()).toISOString();
     const monthStart = startOfMonth(new Date()).toISOString();
-    const monthDate = format(new Date(), 'yyyy-MM-01');
+    const monthStartDate = startOfMonth(new Date());
 
     const [salesRes, inventoryRes, saleItemsRes, purchasesRes, opExpRes] = await Promise.all([
       supabase.from('sales').select('total_amount, sale_date, created_at'),
@@ -78,11 +78,17 @@ export default function Dashboard() {
       .reduce((sum, s) => sum + Number(s.total_amount), 0);
 
     const purchaseTotal = purchases
-      .filter((p) => p.purchase_date >= monthDate)
+      .filter((p) => {
+        const purchaseDate = parseISO(p.purchase_date);
+        return purchaseDate >= monthStartDate;
+      })
       .reduce((sum, p) => sum + Number(p.total_cost), 0);
 
     const operatingTotal = opExp
-      .filter((e) => e.expense_date >= monthDate)
+      .filter((e) => {
+        const expenseDate = parseISO(e.expense_date);
+        return expenseDate >= monthStartDate;
+      })
       .reduce((sum, e) => sum + Number(e.amount), 0);
 
     const serviceStats = {};
@@ -131,6 +137,9 @@ export default function Dashboard() {
     setLoading(false);
   }
 
+  const monthSales = (saleTotal || 0);
+  const monthExpenses = (expenseTotal || 0);
+  const monthOperating = (operatingTotal || 0);
   const profit = monthSales - monthExpenses - monthOperating;
 
   if (loading) {

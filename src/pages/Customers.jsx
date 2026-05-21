@@ -62,15 +62,25 @@ export default function Customers() {
 
   async function saveEdits() {
     if (!selected) return;
-    if (!editForm.full_name.trim()) {
+    const name = editForm.full_name.trim();
+    const phone = editForm.phone.trim();
+    
+    if (!name) {
       setEditError('Name is required');
       return;
     }
+    
+    // Validate phone format if provided (must be digits and common separators)
+    if (phone && !/^[\d\s\-\+\(\)\.]+$/.test(phone)) {
+      setEditError('Phone must contain only numbers, spaces, dashes, and common separators');
+      return;
+    }
+    
     setEditSaving(true);
     try {
       await updateCustomer(selected.id, {
-        full_name: editForm.full_name.trim(),
-        phone: editForm.phone.trim() || null,
+        full_name: name,
+        phone: phone || null,
         email: editForm.email.trim() || null,
         notes: editForm.notes.trim() || null,
       });
