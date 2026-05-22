@@ -16,6 +16,7 @@ import Services from './pages/Services';
 import Customers from './pages/Customers';
 import Backup from './pages/Backup';
 import Settings from './pages/Settings';
+import Expenses from './pages/Expenses';
 
 import { useAuthStore } from './store/authStore';
 
@@ -83,9 +84,21 @@ export default function App() {
             }
           />
 
+          <Route
+            path="expenses"
+            element={
+              <ProtectedRoute adminOnly>
+                <Expenses />
+              </ProtectedRoute>
+            }
+          />
+
           <Route path="settings" element={<Settings />} />
 
         </Route>
+
+        {/* Catch-all so unknown URLs go home instead of showing a blank screen */}
+        <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>
     </AppRouter>
