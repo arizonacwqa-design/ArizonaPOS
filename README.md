@@ -89,7 +89,7 @@ copy .env.example .env
 VITE_SUPABASE_URL=https://xxxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOi...
 VITE_COMPANY_NAME=Arizona Car World
-VITE_COMPANY_ADDRESS=Your Address, Phoenix, AZ
+VITE_COMPANY_ADDRESS=Souq Al Qalh, East Industrial Service Road, Doha, Qatar
 VITE_COMPANY_PHONE=+1 555 000 0000
 VITE_COMPANY_WHATSAPP=+1 555 000 0000
 VITE_COMPANY_INSTAGRAM=@arizonacarworld

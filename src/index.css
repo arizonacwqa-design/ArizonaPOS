@@ -112,6 +112,16 @@
 
 /* Print: thermal (80mm) — default */
 @media print {
+  @page {
+    size: auto;
+    margin: 0;
+  }
+
+  html, body {
+    height: auto;
+    overflow: hidden;
+  }
+
   body * {
     visibility: hidden;
   }
@@ -132,6 +142,8 @@
     font-size: 11px;
     color: #000 !important;
     background: #fff !important;
+    page-break-after: avoid;
+    page-break-before: avoid;
   }
 
   body.print-a4 #a4-invoice,
@@ -150,5 +162,7 @@
     width: 100%;
     color: #000 !important;
     background: #fff !important;
+    page-break-after: avoid;
+    page-break-before: avoid;
   }
 }

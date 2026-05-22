@@ -27,7 +27,7 @@ export const supabase = createClient(
 
 export const companyInfo = {
   name: import.meta.env.VITE_COMPANY_NAME || 'Arizona Car World',
-  address: import.meta.env.VITE_COMPANY_ADDRESS || 'Phoenix, Arizona',
+  address: import.meta.env.VITE_COMPANY_ADDRESS || 'Souq Al Qalh, East Industrial Service Road, Doha, Qatar',
   phone: import.meta.env.VITE_COMPANY_PHONE || '',
   whatsapp: import.meta.env.VITE_COMPANY_WHATSAPP || '',
   instagram: import.meta.env.VITE_COMPANY_INSTAGRAM || '@arizonacarworld',
