@@ -121,23 +121,22 @@ export default function Reports() {
     ]);
     
     // Calculate inventory usage client-side since materialized view doesn't exist
-    const usageMap = new Map();
+    const usageData = [];
     (itemsRes.data || []).forEach(item => {
       if (!item.inventory_item_id || !Number(item.inventory_deducted)) return;
-      const key = item.inventory_item_id;
-      if (!usageMap.has(key)) {
-        const invItem = (invRes.data || []).find(i => i.id === key);
-        usageMap.set(key, {
-          inventory_item_id: key,
-          name: invItem?.name || 'Unknown',
-          stock_type: invItem?.stock_type || 'quantity',
-          total_deducted: 0,
-        });
-      }
-      const entry = usageMap.get(key);
-      entry.total_deducted += Number(item.inventory_deducted) || 0;
+      const sale = (salesRes.data || []).find(s => s.id === item.sale_id);
+      const invItem = (invRes.data || []).find(i => i.id === item.inventory_item_id);
+      usageData.push({
+        id: item.id,
+        sale_date: sale?.sale_date,
+        created_at: sale?.created_at,
+        invoice_number: sale?.invoice_number,
+        item_name: invItem?.name || item.service_name,
+        stock_type: invItem?.stock_type || 'quantity',
+        amount_used: Number(item.inventory_deducted),
+      });
     });
-    const usageData = Array.from(usageMap.values()).sort((a, b) => b.total_deducted - a.total_deducted);
+    usageData.sort((a, b) => new Date(b.sale_date || b.created_at) - new Date(a.sale_date || a.created_at));
     
     setSales(salesRes.data || []);
     setSaleItems(itemsRes.data || []);
