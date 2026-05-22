@@ -15,6 +15,7 @@ import Reports from './pages/Reports';
 import Services from './pages/Services';
 import Customers from './pages/Customers';
 import Backup from './pages/Backup';
+import Settings from './pages/Settings';
 
 import { useAuthStore } from './store/authStore';
 
@@ -81,6 +82,8 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route path="settings" element={<Settings />} />
 
         </Route>
 

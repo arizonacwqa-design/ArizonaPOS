@@ -12,22 +12,25 @@ import {
   Database,
   ChevronsLeft,
   ChevronsRight,
+  Settings,
   X,
 } from 'lucide-react';
 import Logo from './Logo';
 import ThemeToggle from './ThemeToggle';
 import { useAuthStore } from '@/store/authStore';
+import { useTranslation } from '@/lib/translations';
 
 const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/pos', icon: ShoppingCart, label: 'POS Billing' },
-  { to: '/inventory', icon: Package, label: 'Inventory' },
-  { to: '/purchases', icon: Truck, label: 'Purchases', adminOnly: true },
-  { to: '/services', icon: Wrench, label: 'Services', adminOnly: true },
-  { to: '/reports', icon: BarChart3, label: 'Reports' },
-  { to: '/customers', icon: Users, label: 'Customers' },
-  { to: '/expenses', icon: Receipt, label: 'Expenses', adminOnly: true },
-  { to: '/backup', icon: Database, label: 'Backup', adminOnly: true },
+  { to: '/', icon: LayoutDashboard, labelKey: 'dashboard' },
+  { to: '/pos', icon: ShoppingCart, labelKey: 'posBilling' },
+  { to: '/inventory', icon: Package, labelKey: 'inventory' },
+  { to: '/purchases', icon: Truck, labelKey: 'purchases', adminOnly: true },
+  { to: '/services', icon: Wrench, labelKey: 'services', adminOnly: true },
+  { to: '/reports', icon: BarChart3, labelKey: 'reports' },
+  { to: '/customers', icon: Users, labelKey: 'customers' },
+  { to: '/expenses', icon: Receipt, labelKey: 'expenses', adminOnly: true },
+  { to: '/backup', icon: Database, labelKey: 'backup', adminOnly: true },
+  { to: '/settings', icon: Settings, labelKey: 'settings' },
 ];
 
 export default function Sidebar({
@@ -38,6 +41,7 @@ export default function Sidebar({
 }) {
   const navigate = useNavigate();
   const { profile, signOut, isAdmin } = useAuthStore();
+  const { t } = useTranslation();
 
   const handleSignOut = async () => {
     await signOut();
@@ -86,8 +90,9 @@ export default function Sidebar({
         </div>
 
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {navItems.map(({ to, icon: Icon, label, adminOnly }) => {
+          {navItems.map(({ to, icon: Icon, labelKey, adminOnly }) => {
             if (adminOnly && !isAdmin()) return null;
+            const label = t(labelKey);
             return (
               <NavLink
                 key={to}
@@ -122,14 +127,14 @@ export default function Sidebar({
           <button
             type="button"
             onClick={handleSignOut}
-            title={collapsed ? 'Sign Out' : undefined}
-            aria-label="Sign out"
+            title={collapsed ? t('signOut') : undefined}
+            aria-label={t('signOut')}
             className={`flex items-center gap-3 w-full px-3 py-3 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all ${
               collapsed ? 'lg:justify-center' : ''
             }`}
           >
             <LogOut size={20} className="shrink-0" />
-            <span className={collapsed ? 'lg:hidden' : ''}>Sign Out</span>
+            <span className={collapsed ? 'lg:hidden' : ''}>{t('signOut')}</span>
           </button>
 
           {/* Desktop collapse toggle */}

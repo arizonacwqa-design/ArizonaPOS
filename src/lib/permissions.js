@@ -26,7 +26,7 @@ export const PERMISSIONS = {
     expenses: false,
     customers: { read: true, write: false },
     backup: false,
-    settings: false,
+    settings: true,
   },
 };
 

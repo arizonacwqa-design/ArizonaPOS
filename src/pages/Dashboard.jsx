@@ -28,7 +28,10 @@ import LuxuryTable from '@/components/LuxuryTable';
 import { StatCardSkeleton, PageHeaderSkeleton } from '@/components/LoadingSkeleton';
 import { startOfDay, startOfMonth, subDays, format, parseISO } from 'date-fns';
 
+import { useTranslation } from '@/lib/translations';
+
 export default function Dashboard() {
+  const { t } = useTranslation();
   const theme = useThemeStore((s) => s.theme);
   const isDark = theme === 'dark';
   const [todaySales, setTodaySales] = useState(0);
@@ -158,8 +161,8 @@ export default function Dashboard() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
       <header className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-display font-bold text-gold-400">Dashboard</h1>
-        <p className="text-luxury-muted mt-1 text-sm sm:text-base">Arizona Car World — analytics & alerts</p>
+        <h1 className="text-2xl sm:text-3xl font-display font-bold text-gold-400">{t('dashboard')}</h1>
+        <p className="text-luxury-muted mt-1 text-sm sm:text-base">{t('arizonaAnalytics')}</p>
       </header>
 
       {!bannerDismissed && (
@@ -167,19 +170,19 @@ export default function Dashboard() {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-        <StatCard title="Today's Sales" value={formatCurrency(todaySales)} icon={DollarSign} />
-        <StatCard title="Monthly Sales" value={formatCurrency(monthSales)} icon={TrendingUp} />
+        <StatCard title={t('dailySales')} value={formatCurrency(todaySales)} icon={DollarSign} />
+        <StatCard title={t('monthlySales')} value={formatCurrency(monthSales)} icon={TrendingUp} />
         <StatCard
-          title="Net Profit (Month)"
+          title={t('netProfit')}
           value={formatCurrency(profit)}
-          subtitle="Sales − purchases − operating"
+          subtitle={t('profitSubtitle')}
           icon={PiggyBank}
           alert={profit < 0}
         />
         <StatCard
-          title="Low Stock Alerts"
+          title={t('lowStock')}
           value={lowStockItems.length}
-          subtitle={lowStockItems.length ? 'Restock needed' : 'All good'}
+          subtitle={lowStockItems.length ? t('restockNeeded') : t('allGood')}
           icon={AlertTriangle}
           alert={lowStockItems.length > 0}
         />
@@ -187,22 +190,22 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="card-luxury text-sm">
-          <p className="text-luxury-muted">Inventory Purchases (month)</p>
+          <p className="text-luxury-muted">{t('inventoryPurchases')}</p>
           <p className="text-xl font-bold text-gold-400 mt-1">{formatCurrency(monthExpenses)}</p>
         </div>
         <div className="card-luxury text-sm">
-          <p className="text-luxury-muted">Operating Expenses (month)</p>
+          <p className="text-luxury-muted">{t('operatingExpenses')}</p>
           <p className="text-xl font-bold text-gold-400 mt-1">{formatCurrency(monthOperating)}</p>
         </div>
         <div className="card-luxury text-sm">
-          <p className="text-luxury-muted">Inventory Items</p>
+          <p className="text-luxury-muted">{t('inventoryItems')}</p>
           <p className="text-xl font-bold text-gold-400 mt-1">{inventory.length}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="card-luxury lg:col-span-2">
-          <h2 className="text-lg font-semibold text-gold-400 mb-4">Daily Sales — Last 7 Days</h2>
+          <h2 className="text-lg font-semibold text-gold-400 mb-4">{t('dailySalesChart')}</h2>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={chartData}>
               <XAxis dataKey="day" stroke={isDark ? '#888' : '#666'} />
@@ -214,7 +217,7 @@ export default function Dashboard() {
                   color: isDark ? '#fff' : '#1a1a1a',
                 }}
                 labelStyle={{ color: isDark ? '#fff' : '#1a1a1a' }}
-                formatter={(v) => [formatCurrency(v), 'Sales']}
+                formatter={(v) => [formatCurrency(v), t('dailySales')]}
               />
               <Bar dataKey="sales" fill="#c9a227" radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -224,10 +227,10 @@ export default function Dashboard() {
         <div className="card-luxury">
           <h2 className="text-lg font-semibold text-gold-400 mb-4 flex items-center gap-2">
             <Award size={20} />
-            Top Services (Month)
+            {t('topServicesMonth')}
           </h2>
           {topServices.length === 0 ? (
-            <p className="text-luxury-muted text-sm">No sales this month</p>
+            <p className="text-luxury-muted text-sm">{t('noSalesMonth')}</p>
           ) : (
             <ul className="space-y-3">
               {topServices.map((p, i) => (
@@ -236,7 +239,7 @@ export default function Dashboard() {
                     <span className="text-gold-500 mr-2">#{i + 1}</span>
                     {p.name}
                   </span>
-                  <span className="text-gold-400 text-sm">{p.qty} sold</span>
+                  <span className="text-gold-400 text-sm">{p.qty} {t('sold')}</span>
                 </li>
               ))}
             </ul>
@@ -248,16 +251,16 @@ export default function Dashboard() {
         <div className="card-luxury">
           <h2 className="text-lg font-semibold text-gold-400 mb-4 flex items-center gap-2">
             <Boxes size={20} />
-            Top Inventory Usage (Month)
+            {t('topInventoryUsage')}
           </h2>
           {topInventoryUsage.length === 0 ? (
-            <p className="text-luxury-muted text-sm">No inventory deducted this month</p>
+            <p className="text-luxury-muted text-sm">{t('noInventoryDeducted')}</p>
           ) : (
             <ul className="space-y-2">
               {topInventoryUsage.map((u) => (
                 <li key={u.name} className="flex justify-between bg-luxury-slate rounded-lg px-3 py-2 text-sm">
                   <span>{u.name}</span>
-                  <span className="text-amber-400">{u.total.toFixed(1)} used</span>
+                  <span className="text-amber-400">{u.total.toFixed(1)} {t('used')}</span>
                 </li>
               ))}
             </ul>
@@ -265,16 +268,16 @@ export default function Dashboard() {
         </div>
 
         <div className="card-luxury">
-          <h2 className="text-lg font-semibold text-gold-400 mb-4">Quick Actions</h2>
+          <h2 className="text-lg font-semibold text-gold-400 mb-4">{t('quickActions')}</h2>
           <div className="space-y-3">
             <Link to="/pos" className="btn-gold flex items-center justify-center gap-2 w-full">
-              <ShoppingCart size={18} /> New Sale
+              <ShoppingCart size={18} /> {t('newSale')}
             </Link>
             <Link to="/customers" className="btn-outline flex items-center justify-center gap-2 w-full">
-              Customer History
+              {t('customerHistory')}
             </Link>
             <Link to="/reports" className="btn-outline flex items-center justify-center gap-2 w-full">
-              <Receipt size={18} /> Full Reports
+              <Receipt size={18} /> {t('fullReports')}
             </Link>
           </div>
         </div>
@@ -284,14 +287,14 @@ export default function Dashboard() {
         <div className="card-luxury mt-6 border-red-500/40 bg-red-950/20">
           <h2 className="text-lg font-semibold text-red-400 mb-4 flex items-center gap-2">
             <AlertTriangle size={20} />
-            Low Stock — Restock Now
+            {t('lowStockRestock')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {lowStockItems.map((item) => (
               <div key={item.id} className="rounded-lg p-4 border-2 border-red-500/50 bg-red-500/10">
                 <p className="font-medium text-red-200">{item.name}</p>
                 <p className="text-red-400 text-sm font-semibold">
-                  {formatStock(item)} — below {item.low_stock_threshold}
+                  {formatStock(item)} — {t('below')} {item.low_stock_threshold}
                   {item.stock_type === 'meter' ? 'm' : ` ${item.unit_label}`}
                 </p>
               </div>
@@ -302,16 +305,16 @@ export default function Dashboard() {
 
       <div className="card-luxury mt-6">
         <h2 className="text-lg font-semibold text-gold-400 mb-4 flex items-center gap-2">
-          <Package size={20} /> All Inventory
+          <Package size={20} /> {t('allInventory')}
         </h2>
         <LuxuryTable
           columns={[
-            { key: 'name', header: 'Item' },
-            { key: 'category', header: 'Category', cellClassName: 'text-luxury-muted' },
-            { key: 'type', header: 'Type', render: (r) => r.stock_type },
+            { key: 'name', header: t('item') },
+            { key: 'category', header: t('category'), cellClassName: 'text-luxury-muted' },
+            { key: 'type', header: t('type'), render: (r) => r.stock_type },
             {
               key: 'stock',
-              header: 'Stock',
+              header: t('stock'),
               align: 'right',
               render: (r) => (
                 <span className={isLowStock(r) ? 'text-red-400 font-semibold' : 'text-gold-400'}>

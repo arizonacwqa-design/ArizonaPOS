@@ -38,6 +38,7 @@ import {
   saleItemsPayload,
   calcBillingTotals,
 } from '@/lib/pos';
+import { useTranslation } from '@/lib/translations';
 
 const emptyCustomer = {
   customer_name: '',
@@ -47,6 +48,7 @@ const emptyCustomer = {
 };
 
 export default function POS() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const invoiceRef = useRef();
 
@@ -156,15 +158,15 @@ export default function POS() {
   async function completeSale() {
     const name = customer.customer_name.trim();
     if (!name) {
-      setMessage('Customer name is required');
+      setMessage(t('customerNameRequired'));
       return;
     }
     if (name.length > 100) {
-      setMessage('Customer name must be 100 characters or less');
+      setMessage(t('customerNameLength'));
       return;
     }
     if (cart.length === 0) {
-      setMessage('Add at least one service or material');
+      setMessage(t('addAtLeastOneService'));
       return;
     }
 
@@ -236,7 +238,7 @@ export default function POS() {
     const sale = rpcResult?.sale;
     const items = rpcResult?.items || [];
     if (!sale) {
-      setMessage('Sale was not created. Please try again.');
+      setMessage(t('saleNotCreated'));
       return;
     }
 
@@ -284,15 +286,15 @@ export default function POS() {
       {/* Header */}
       <header className="mb-6 lg:mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-gold-500 mb-1">Point of Sale</p>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-gold-400">POS Billing</h1>
+          <p className="text-xs uppercase tracking-[0.2em] text-gold-500 mb-1">{t('posBilling')}</p>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-gold-400">{t('posBilling')}</h1>
           <p className="text-luxury-muted mt-1 max-w-xl text-sm sm:text-base">
-            Create invoices, link services to inventory, and auto-deduct meter & quantity stock on save
+            {t('createInvoicesDescription')}
           </p>
         </div>
         {lastSale && (
           <button type="button" onClick={startNewSale} className="btn-outline text-sm">
-            New Sale
+            {t('newSale')}
           </button>
         )}
       </header>
@@ -305,17 +307,17 @@ export default function POS() {
             <div className="flex items-center gap-3 border-b border-gold-600/15 bg-luxury-slate/40 px-5 py-3">
               <StepBadge n={1} />
               <User className="text-gold-400" size={20} />
-              <h2 className="font-semibold text-gold-300">Customer & Vehicle</h2>
+              <h2 className="font-semibold text-gold-300">{t('customerVehicle')}</h2>
             </div>
             <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Customer Name" required>
+              <Field label={t('customerName')} required>
                 <CustomerAutocomplete
                   value={customer}
                   onChange={setCustomer}
                   onSelect={setCustomer}
                 />
               </Field>
-              <Field label="Phone Number">
+              <Field label={t('phoneNumber')}>
                 <input
                   className="input-luxury"
                   value={customer.customer_phone}
@@ -325,7 +327,7 @@ export default function POS() {
                   placeholder="+974 …"
                 />
               </Field>
-              <Field label="Car Model" icon={Car}>
+              <Field label={t('carModel')} icon={Car}>
                 <input
                   className="input-luxury"
                   value={customer.car_model}
@@ -333,23 +335,23 @@ export default function POS() {
                   placeholder="e.g. Range Rover Sport"
                 />
               </Field>
-              <Field label="Plate Number">
+              <Field label={t('carPlate')}>
                 <input
                   className="input-luxury"
                   value={customer.car_plate}
                   onChange={(e) => setCustomer({ ...customer, car_plate: e.target.value })}
-                  placeholder="Plate / VIN"
+                  placeholder={t('carPlate')}
                 />
               </Field>
               <div className="sm:col-span-2">
                 <label className="label-luxury flex items-center gap-2">
-                  <FileText size={14} /> Notes (optional)
+                  <FileText size={14} /> {t('notesOptional')}
                 </label>
                 <input
                   className="input-luxury"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Special requests, warranty, etc."
+                  placeholder={t('notesOptional')}
                 />
               </div>
             </div>
@@ -370,7 +372,7 @@ export default function POS() {
                 />
                 <input
                   className="input-luxury pl-9 py-2 text-sm"
-                  placeholder="Search services…"
+                  placeholder={t('searchServices')}
                   value={serviceSearch}
                   onChange={(e) => setServiceSearch(e.target.value)}
                 />
@@ -381,7 +383,7 @@ export default function POS() {
               <FilterPill
                 active={serviceFilter === 'all'}
                 onClick={() => setServiceFilter('all')}
-                label="All"
+                label={t('all')}
               />
               {POS_SERVICE_GROUPS.filter((g) => g.id !== 'all').map((g) => (
                 <FilterPill
@@ -419,7 +421,7 @@ export default function POS() {
               ))}
               {filteredServices.length === 0 && (
                 <p className="col-span-full text-center text-luxury-muted py-8 text-sm">
-                  No services found. Add services in Admin → Services.
+                  {t('noServicesFound')}
                 </p>
               )}
             </div>
@@ -432,7 +434,7 @@ export default function POS() {
               <div>
                 <h2 className="font-semibold text-gold-300">Inventory Usage</h2>
                 <p className="text-xs text-luxury-muted">
-                  Meters for PPF/tint · quantity for shampoo, polish, chemicals
+                  {t('inventoryUsageDetail')}
                 </p>
               </div>
             </div>
@@ -450,13 +452,13 @@ export default function POS() {
             <div className="flex items-center gap-3 border-b border-gold-600/15 px-5 py-3">
               <StepBadge n={4} />
               <ShoppingCart className="text-gold-400" size={20} />
-              <h2 className="font-semibold text-gold-300">Cart & Checkout</h2>
+              <h2 className="font-semibold text-gold-300">{t('cartCheckout')}</h2>
             </div>
 
             <div className="p-5">
               {cartWithKeys.length === 0 ? (
                 <p className="text-center text-luxury-muted py-10 text-sm">
-                  Tap services to add to cart
+                  {t('tapToAddToCart')}
                 </p>
               ) : (
                 <ul className="space-y-2 mb-4 max-h-52 overflow-y-auto">
@@ -468,7 +470,7 @@ export default function POS() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{item.service_name}</p>
                         {item.lineType === 'material' && (
-                          <span className="text-[10px] text-amber-400">Material only</span>
+                          <span className="text-[10px] text-amber-400">{t('materialOnly')}</span>
                         )}
                         {item.inventory_deducted > 0 && (
                           <p className="text-[10px] text-amber-400/90">
@@ -533,7 +535,7 @@ export default function POS() {
                 <div className="mb-4 rounded-lg border border-amber-600/25 bg-amber-950/30 p-3">
                   <p className="text-xs font-semibold text-amber-400 flex items-center gap-1 mb-2">
                     <AlertTriangle size={14} />
-                    Auto stock deduction on save
+                    {t('autoStockDeduction')}
                   </p>
                   <ul className="text-xs space-y-1 text-luxury-muted">
                     {inventoryUsage.map((u) => (
@@ -557,7 +559,7 @@ export default function POS() {
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="label-luxury mb-0">
-                      Discount {discountType === 'percent' ? '(%)' : '(QAR)'}
+                      {t('discount')} {discountType === 'percent' ? '(%)' : '(QAR)'}
                     </label>
                     <div className="inline-flex rounded-md overflow-hidden border border-luxury-border text-[11px]">
                       <button
@@ -618,7 +620,7 @@ export default function POS() {
                       onChange={(e) => setTaxEnabled(e.target.checked)}
                       className="rounded border-gold-600"
                     />
-                    Tax
+                    {t('tax')}
                   </label>
                   {taxEnabled && (
                     <input
@@ -644,7 +646,7 @@ export default function POS() {
                   )}
                 </div>
                 <div>
-                  <label className="label-luxury">Payment Method</label>
+                  <label className="label-luxury">{t('paymentMethod')}</label>
                   <select
                     className="input-luxury"
                     value={paymentMethod}
@@ -658,7 +660,7 @@ export default function POS() {
                   </select>
                 </div>
                 <div className="flex justify-between text-xl font-bold text-gold-400 pt-1">
-                  <span>Grand Total</span>
+                  <span>{t('grandTotal')}</span>
                   <span>{formatCurrency(billing.total)}</span>
                 </div>
               </div>
@@ -682,33 +684,33 @@ export default function POS() {
                 className="btn-gold w-full mt-4 flex items-center justify-center gap-2 py-3"
               >
                 <CheckCircle size={20} />
-                {loading ? 'Saving invoice…' : 'Complete Sale & Deduct Stock'}
+                {loading ? t('savingInvoice') : t('completeSaleDeduct')}
               </button>
 
               {lastSale && (
                 <div className="space-y-2 mt-2">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button type="button" onClick={() => runPrint('thermal')} className="btn-outline flex items-center justify-center gap-2">
-                      <Printer size={18} /> Thermal (80mm)
+                      <Printer size={18} /> {t('thermal')}
                     </button>
                     <button type="button" onClick={() => runPrint('a4')} className="btn-outline flex items-center justify-center gap-2">
-                      <Printer size={18} /> A4 Invoice
+                      <Printer size={18} /> {t('a4Invoice')}
                     </button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button type="button" onClick={() => downloadLuxuryInvoicePdf(lastSale, lastItems, { format: 'a4' })} className="btn-outline flex items-center justify-center gap-2 text-sm">
-                      <Download size={16} /> PDF (A4)
+                      <Download size={16} /> {t('pdfA4')}
                     </button>
                     <button type="button" onClick={() => downloadLuxuryInvoicePdf(lastSale, lastItems, { format: 'thermal' })} className="btn-outline flex items-center justify-center gap-2 text-sm">
-                      <Download size={16} /> PDF (Thermal)
+                      <Download size={16} /> {t('pdfThermal')}
                     </button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button type="button" disabled={!lastSale.customer_phone} onClick={() => openWhatsApp(lastSale.customer_phone, buildInvoiceWhatsAppMessage(lastSale, lastItems))} className="btn-gold flex items-center justify-center gap-2 text-sm py-2">
-                      <MessageCircle size={16} /> WhatsApp Customer
+                      <MessageCircle size={16} /> {t('whatsAppCustomer')}
                     </button>
                     <button type="button" onClick={() => openWhatsApp(null, buildInvoiceWhatsAppMessage(lastSale, lastItems))} className="btn-outline flex items-center justify-center gap-2 text-sm">
-                      <MessageCircle size={16} /> Share to Shop
+                      <MessageCircle size={16} /> {t('shareToShop')}
                     </button>
                   </div>
                 </div>

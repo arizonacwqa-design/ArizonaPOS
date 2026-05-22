@@ -9,12 +9,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap"
       rel="stylesheet"
     />
     <script>
-      // Apply saved theme before first paint to avoid a flash of the wrong
-      // theme on initial load. Keep in sync with src/store/themeStore.js.
+      // Apply saved theme and language before first paint to avoid a flash of the wrong
+      // state on initial load. Keep in sync with themeStore.js and languageStore.js.
       (function () {
         try {
           var t = localStorage.getItem('acw_theme');
@@ -22,6 +22,17 @@
             document.documentElement.classList.add('theme-light');
           } else {
             document.documentElement.classList.add('theme-dark');
+          }
+
+          var l = localStorage.getItem('acw_language');
+          if (l === 'ar') {
+            document.documentElement.setAttribute('lang', 'ar');
+            document.documentElement.setAttribute('dir', 'rtl');
+            document.documentElement.style.fontFamily = "'Cairo', 'Outfit', 'Inter', sans-serif";
+          } else {
+            document.documentElement.setAttribute('lang', 'en');
+            document.documentElement.setAttribute('dir', 'ltr');
+            document.documentElement.style.fontFamily = "'Outfit', 'Inter', sans-serif";
           }
         } catch (e) {
           document.documentElement.classList.add('theme-dark');
