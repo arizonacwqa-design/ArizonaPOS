@@ -32,7 +32,18 @@ export default function Expenses() {
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
-  const { t } = useTranslation();
+  const { t: originalT } = useTranslation();
+  const t = (key) => {
+    try {
+      const val = originalT(key);
+      if (typeof val === 'object' && val !== null) {
+        return JSON.stringify(val);
+      }
+      return val !== undefined ? String(val) : '';
+    } catch (e) {
+      return String(key);
+    }
+  };
 
   useEffect(() => {
     load();
