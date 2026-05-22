@@ -124,6 +124,10 @@ export const translations = {
     saveExpense: 'Save Expense',
     allOperatingExpenses: 'All Operating Expenses',
     noOperatingExpenses: 'No operating expenses yet. Run supabase/migrations/005_advanced_features.sql if the table is missing.',
+    rent: 'Rent',
+    salary: 'Salaries',
+    utilities: 'Utilities',
+    other: 'Other',
     whatsAppCustomer: 'WhatsApp Customer',
     shareToShop: 'Share to Shop',
     createInvoicesDescription: 'Create invoices, link services to inventory, and auto-deduct meter & quantity stock on save',
@@ -298,6 +302,21 @@ export const translations = {
     customerNameLength: 'يجب ألا يتجاوز اسم العميل 100 حرف',
     addAtLeastOneService: 'يرجى إضافة خدمة واحدة أو مادة واحدة على الأقل',
     saleNotCreated: 'لم يتم إنشاء عملية البيع. يرجى المحاولة مرة أخرى.',
+    
+    // Expenses page
+    finance: 'المالية',
+    expenseTracking: 'تتبع المصروفات',
+    monthlyRevenue: 'الإيرادات الشهرية',
+    netProfitEstimated: 'صافي الربح (مقدر)',
+    addExpense: 'إضافة مصروف',
+    saveExpense: 'حفظ المصروف',
+    allOperatingExpenses: 'جميع المصروفات التشغيلية',
+    noOperatingExpenses: 'لا توجد مصروفات تشغيلية حتى الآن. قم بتشغيل الهجرة 005 إذا كان الجدول مفقوداً.',
+    notes: 'ملاحظات',
+    rent: 'إيجار',
+    salary: 'رواتب',
+    utilities: 'فواتير (كهرباء، ماء)',
+    other: 'أخرى',
 
     // Reports
     dailySales: 'المبيعات اليومية',

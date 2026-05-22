@@ -128,8 +128,8 @@ export default function Expenses() {
 
       {isAdmin() && (
         <form onSubmit={handleSubmit} className="card-luxury mb-8">
-          <h2 className="text-lg font-semibold text-gold-400 mb-4 flex items-center gap-2">{t('addExpense')}
-            <Plus size={20} /> Add Expense
+          <h2 className="text-lg font-semibold text-gold-400 mb-4 flex items-center gap-2">
+            <Plus size={20} /> {t('addExpense')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
@@ -141,7 +141,7 @@ export default function Expenses() {
               >
                 {CATEGORIES.map((c) => (
                   <option key={c.value} value={c.value}>
-                    {c.label}
+                    {t(c.value) || c.label}
                   </option>
                 ))}
               </select>
@@ -193,11 +193,11 @@ export default function Expenses() {
       )}
 
       <div className="card-luxury">
-        <h2 className="text-lg font-semibold text-gold-400 mb-4">All Operating Expenses</h2>
+        <h2 className="text-lg font-semibold text-gold-400 mb-4">{t('allOperatingExpenses')}</h2>
         <LuxuryTable
           columns={[
             { key: 'date', header: t('date'), render: (r) => formatDate(r.expense_date) },
-            { key: 'category', header: t('category'), render: (r) => r.category },
+            { key: 'category', header: t('category'), render: (r) => t(r.category) || r.category },
             { key: 'description', header: t('description') },
             {
               key: 'amount',
