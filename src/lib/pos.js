@@ -104,17 +104,30 @@ export function cartLineKey(line) {
     : `mat-${line.inventory_item_id}`;
 }
 
-/** Subtotal → discount → tax → grand total */
-export function calcBillingTotals(subtotal, discount, taxRate, taxEnabled) {
-  const disc = Math.max(0, Number(discount) || 0);
+/**
+ * Subtotal → discount → tax → grand total.
+ * Discount can be a flat QAR amount (discountType='flat') or a percentage of
+ * subtotal (discountType='percent'). Caps at subtotal and reports the cap.
+ */
+export function calcBillingTotals(subtotal, discount, taxRate, taxEnabled, discountType = 'flat') {
   const base = Math.max(0, Number(subtotal) || 0);
+  const discountInput = Math.max(0, Number(discount) || 0);
+  const rawDiscount =
+    discountType === 'percent'
+      ? Math.round(base * (Math.min(discountInput, 100) / 100) * 100) / 100
+      : discountInput;
+  const disc = Math.min(rawDiscount, base);
+  const discountCapped = rawDiscount > base && base > 0;
   const afterDiscount = Math.max(0, base - disc);
-  const rate = taxEnabled ? Math.max(0, Number(taxRate) || 0) : 0;
+  const rate = taxEnabled ? Math.max(0, Math.min(100, Number(taxRate) || 0)) : 0;
   const taxAmount = Math.round(afterDiscount * (rate / 100) * 100) / 100;
   const total = Math.round((afterDiscount + taxAmount) * 100) / 100;
   return {
     subtotal: base,
     discount: disc,
+    rawDiscount,
+    discountCapped,
+    discountType,
     taxRate: rate,
     taxAmount,
     total,

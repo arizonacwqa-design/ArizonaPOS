@@ -33,7 +33,7 @@ export default function LowStockBanner({ items, onDismiss }) {
           </div>
         </div>
         {onDismiss && (
-          <button type="button" onClick={onDismiss} className="text-luxury-muted hover:text-white p-1">
+          <button type="button" aria-label="Dismiss low stock alert" onClick={onDismiss} className="text-luxury-muted hover:text-white p-1">
             <X size={18} />
           </button>
         )}

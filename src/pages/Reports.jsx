@@ -1,17 +1,24 @@
 import { useEffect, useState, useMemo } from 'react';
+import { Printer, Download, MessageCircle, X, FileText, Search } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { formatCurrency, formatDate, formatStock, isLowStock } from '@/lib/format';
+import { formatCurrency, formatDate, formatDateTime, formatStock, isLowStock } from '@/lib/format';
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import ExportButtons from '@/components/ExportButtons';
 import {
   buildSalesExportRows,
   SALES_EXPORT_COLUMNS,
 } from '@/lib/export';
+import ThermalInvoice from '@/components/ThermalInvoice';
+import A4Invoice from '@/components/A4Invoice';
+import { downloadLuxuryInvoicePdf } from '@/lib/invoicePdf';
+import { buildInvoiceWhatsAppMessage, openWhatsApp } from '@/lib/share';
 
 const TABS = [
   { id: 'daily', label: 'Daily Sales' },
   { id: 'monthly', label: 'Monthly Sales' },
+  { id: 'search', label: 'Search Bills' },
+  { id: 'vehicle', label: 'Vehicle History' },
   { id: 'expenses', label: 'Expenses', adminOnly: true },
   { id: 'inventory', label: 'Inventory' },
   { id: 'lowstock', label: 'Low Stock' },
@@ -32,6 +39,66 @@ export default function Reports() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [vehicleQuery, setVehicleQuery] = useState('');
+  const [reprintSale, setReprintSale] = useState(null);
+  const [reprintItems, setReprintItems] = useState([]);
+  const [reprintLoading, setReprintLoading] = useState(false);
+  const [reprintError, setReprintError] = useState('');
+
+  async function openReprint(sale) {
+    setReprintSale(sale);
+    setReprintItems([]);
+    setReprintError('');
+    setReprintLoading(true);
+    const { data, error } = await supabase
+      .from('sale_items')
+      .select('*, inventory_items(name, stock_type)')
+      .eq('sale_id', sale.id)
+      .order('id');
+    setReprintLoading(false);
+    if (error) {
+      setReprintError(error.message);
+      return;
+    }
+    setReprintItems(data || []);
+  }
+
+  function closeReprint() {
+    setReprintSale(null);
+    setReprintItems([]);
+    setReprintError('');
+  }
+
+  function reprintBrowserPrint(mode) {
+    document.body.classList.remove('print-thermal', 'print-a4');
+    document.body.classList.add(mode === 'a4' ? 'print-a4' : 'print-thermal');
+    if (window.electronAPI?.printInvoice) {
+      window.electronAPI.printInvoice();
+    } else {
+      window.print();
+    }
+    setTimeout(() => {
+      document.body.classList.remove('print-thermal', 'print-a4');
+    }, 500);
+  }
+
+  const reprintInventoryUsage = useMemo(() => {
+    const map = new Map();
+    for (const item of reprintItems) {
+      if (!item.inventory_item_id || !Number(item.inventory_deducted)) continue;
+      const key = item.inventory_item_id;
+      const prev = map.get(key) || {
+        id: key,
+        name: item.inventory_items?.name || item.service_name,
+        stock_type: item.inventory_items?.stock_type || 'quantity',
+        total: 0,
+      };
+      prev.total += Number(item.inventory_deducted) || 0;
+      map.set(key, prev);
+    }
+    return [...map.values()];
+  }, [reprintItems]);
 
   useEffect(() => {
     loadReports();
@@ -39,7 +106,7 @@ export default function Reports() {
 
   async function loadReports() {
     setLoading(true);
-    const [salesRes, itemsRes, invRes, profRes, purchRes, usageRes] = await Promise.all([
+    const [salesRes, itemsRes, invRes, profRes, purchRes] = await Promise.all([
       supabase
         .from('sales')
         .select('*, profiles(full_name)')
@@ -51,14 +118,33 @@ export default function Reports() {
         .from('inventory_purchases')
         .select('*, inventory_items(name)')
         .order('purchase_date', { ascending: false }),
-      supabase.from('inventory_usage_report').select('*').limit(500),
     ]);
+    
+    // Calculate inventory usage client-side since materialized view doesn't exist
+    const usageMap = new Map();
+    (itemsRes.data || []).forEach(item => {
+      if (!item.inventory_item_id || !Number(item.inventory_deducted)) return;
+      const key = item.inventory_item_id;
+      if (!usageMap.has(key)) {
+        const invItem = (invRes.data || []).find(i => i.id === key);
+        usageMap.set(key, {
+          inventory_item_id: key,
+          name: invItem?.name || 'Unknown',
+          stock_type: invItem?.stock_type || 'quantity',
+          total_deducted: 0,
+        });
+      }
+      const entry = usageMap.get(key);
+      entry.total_deducted += Number(item.inventory_deducted) || 0;
+    });
+    const usageData = Array.from(usageMap.values()).sort((a, b) => b.total_deducted - a.total_deducted);
+    
     setSales(salesRes.data || []);
     setSaleItems(itemsRes.data || []);
     setInventory(invRes.data || []);
     setProfiles(profRes.data || []);
     setPurchases(purchRes.data || []);
-    setInventoryUsage(usageRes.data || []);
+    setInventoryUsage(usageData);
     setLoading(false);
   }
 
@@ -116,6 +202,44 @@ export default function Reports() {
   const dailyExportRows = buildSalesExportRows(dailySales);
   const monthlyExportRows = buildSalesExportRows(monthlySales);
 
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return sales
+      .filter(
+        (s) =>
+          s.invoice_number?.toLowerCase().includes(q) ||
+          s.customer_name?.toLowerCase().includes(q) ||
+          s.customer_phone?.toLowerCase().includes(q) ||
+          s.car_plate?.toLowerCase().includes(q) ||
+          s.car_model?.toLowerCase().includes(q)
+      )
+      .slice(0, 100);
+  }, [sales, searchQuery]);
+
+  const vehicleResults = useMemo(() => {
+    const q = vehicleQuery.trim().toLowerCase();
+    if (!q) return [];
+    return sales.filter(
+      (s) =>
+        s.car_plate?.toLowerCase().includes(q) ||
+        s.car_model?.toLowerCase().includes(q)
+    );
+  }, [sales, vehicleQuery]);
+
+  const vehicleStats = useMemo(() => {
+    if (!vehicleResults.length) return null;
+    const total = vehicleResults.reduce((s, r) => s + Number(r.total_amount || 0), 0);
+    const first = vehicleResults[vehicleResults.length - 1];
+    const last = vehicleResults[0];
+    return {
+      visits: vehicleResults.length,
+      total,
+      firstVisit: first.sale_date || first.created_at,
+      lastVisit: last.sale_date || last.created_at,
+    };
+  }, [vehicleResults]);
+
   const expenseExportColumns = [
     { header: 'Date', accessor: (r) => formatDate(r.purchase_date) },
     { header: 'Bill', accessor: (r) => r.bill_number || '—' },
@@ -129,10 +253,10 @@ export default function Reports() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
       <header className="mb-6">
-        <h1 className="text-3xl font-display text-gold-400">Reports</h1>
-        <p className="text-luxury-muted">Export daily/monthly sales, inventory, and expenses</p>
+        <h1 className="text-2xl sm:text-3xl font-display font-bold text-gold-400">Reports</h1>
+        <p className="text-luxury-muted text-sm sm:text-base">Export daily/monthly sales, inventory, and expenses</p>
       </header>
 
       <div className="flex flex-wrap gap-2 mb-6">
@@ -171,7 +295,7 @@ export default function Reports() {
             rows={dailyExportRows}
             filenameBase={`daily_sales_${selectedDate}`}
           />
-          <SalesTable data={dailySales} />
+          <SalesTable data={dailySales} onReprint={openReprint} />
         </div>
       )}
 
@@ -206,7 +330,78 @@ export default function Reports() {
             rows={monthlyExportRows}
             filenameBase={`monthly_sales_${selectedMonth}`}
           />
-          <SalesTable data={monthlySales} />
+          <SalesTable data={monthlySales} onReprint={openReprint} />
+        </div>
+      )}
+
+      {tab === 'search' && (
+        <div className="space-y-4">
+          <div className="relative max-w-lg">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-luxury-muted" size={18} />
+            <input
+              className="input-luxury pl-10"
+              autoFocus
+              placeholder="Invoice #, customer name, phone, or plate…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          {searchQuery.trim() === '' ? (
+            <p className="text-luxury-muted text-sm">
+              Type to find any past invoice. Up to 100 results shown.
+            </p>
+          ) : (
+            <>
+              <p className="text-luxury-muted text-xs">
+                {searchResults.length} result{searchResults.length === 1 ? '' : 's'}
+              </p>
+              <SalesTable data={searchResults} onReprint={openReprint} />
+            </>
+          )}
+        </div>
+      )}
+
+      {tab === 'vehicle' && (
+        <div className="space-y-4">
+          <div className="relative max-w-lg">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-luxury-muted" size={18} />
+            <input
+              className="input-luxury pl-10"
+              autoFocus
+              placeholder="Plate number or car model…"
+              value={vehicleQuery}
+              onChange={(e) => setVehicleQuery(e.target.value)}
+            />
+          </div>
+          {!vehicleQuery.trim() ? (
+            <p className="text-luxury-muted text-sm">
+              Look up every service done on a specific car. Search by plate or model.
+            </p>
+          ) : vehicleStats ? (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                <div className="card-luxury p-4">
+                  <p className="text-luxury-muted text-xs">Visits</p>
+                  <p className="text-2xl font-bold text-gold-400">{vehicleStats.visits}</p>
+                </div>
+                <div className="card-luxury p-4">
+                  <p className="text-luxury-muted text-xs">Total Spent</p>
+                  <p className="text-2xl font-bold text-gold-400">{formatCurrency(vehicleStats.total)}</p>
+                </div>
+                <div className="card-luxury p-4">
+                  <p className="text-luxury-muted text-xs">First Visit</p>
+                  <p className="text-sm font-medium">{formatDate(vehicleStats.firstVisit)}</p>
+                </div>
+                <div className="card-luxury p-4">
+                  <p className="text-luxury-muted text-xs">Last Visit</p>
+                  <p className="text-sm font-medium">{formatDate(vehicleStats.lastVisit)}</p>
+                </div>
+              </div>
+              <SalesTable data={vehicleResults} onReprint={openReprint} />
+            </>
+          ) : (
+            <p className="text-luxury-muted text-sm">No services match "{vehicleQuery}".</p>
+          )}
         </div>
       )}
 
@@ -414,6 +609,23 @@ export default function Reports() {
         </div>
       )}
 
+      <ReprintModal
+        sale={reprintSale}
+        items={reprintItems}
+        inventoryUsage={reprintInventoryUsage}
+        loading={reprintLoading}
+        error={reprintError}
+        onClose={closeReprint}
+        onPrint={reprintBrowserPrint}
+      />
+
+      {reprintSale && (
+        <>
+          <ThermalInvoice sale={reprintSale} items={reprintItems} inventoryUsage={reprintInventoryUsage} />
+          <A4Invoice sale={reprintSale} items={reprintItems} inventoryUsage={reprintInventoryUsage} />
+        </>
+      )}
+
       {tab === 'employees' && (
         <div className="space-y-4">
           <input
@@ -463,7 +675,7 @@ export default function Reports() {
   );
 }
 
-function SalesTable({ data }) {
+function SalesTable({ data, onReprint }) {
   return (
     <div className="card-luxury overflow-x-auto">
       <table className="w-full text-sm">
@@ -474,11 +686,12 @@ function SalesTable({ data }) {
             <th className="text-left py-3 px-2">Car</th>
             <th className="text-left py-3 px-2">Payment</th>
             <th className="text-right py-3 px-2">Total</th>
+            <th className="text-right py-3 px-2 w-32"></th>
           </tr>
         </thead>
         <tbody>
           {data.map((s) => (
-            <tr key={s.id} className="border-b border-luxury-border/50">
+            <tr key={s.id} className="border-b border-luxury-border/50 hover:bg-luxury-slate/40">
               <td className="py-3 px-2">{s.invoice_number}</td>
               <td className="py-3 px-2">{s.customer_name}</td>
               <td className="py-3 px-2 text-luxury-muted">
@@ -488,17 +701,238 @@ function SalesTable({ data }) {
               <td className="py-3 px-2 text-right text-gold-400">
                 {formatCurrency(s.total_amount)}
               </td>
+              <td className="py-3 px-2 text-right">
+                <button
+                  type="button"
+                  onClick={() => onReprint?.(s)}
+                  className="text-gold-400 hover:text-gold-300 text-xs inline-flex items-center gap-1"
+                >
+                  <FileText size={14} /> Reprint
+                </button>
+              </td>
             </tr>
           ))}
           {data.length === 0 && (
             <tr>
-              <td colSpan={5} className="py-8 text-center text-luxury-muted">
+              <td colSpan={6} className="py-8 text-center text-luxury-muted">
                 No sales for this period
               </td>
             </tr>
           )}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function ReprintModal({
+  sale,
+  items,
+  inventoryUsage,
+  loading,
+  error,
+  onClose,
+  onPrint,
+}) {
+  if (!sale) return null;
+  const customerPhone = sale.customer_phone;
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-2 sm:p-4 print:hidden"
+      onClick={onClose}
+    >
+      <div
+        className="card-luxury w-full max-w-3xl max-h-[95vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <p className="text-xs uppercase tracking-wider text-gold-500">Invoice Preview</p>
+            <h3 className="text-xl font-display text-gold-400 font-bold">{sale.invoice_number}</h3>
+            <p className="text-xs text-luxury-muted mt-1">
+              {formatDateTime(sale.sale_date || sale.created_at)}
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="Close invoice"
+            onClick={onClose}
+            className="text-luxury-muted hover:text-gold-300 p-1"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Invoice preview pane — mimics the printed A4 look on a light card */}
+        <div className="bg-white text-gray-900 rounded-xl border-2 border-gold-600/30 p-5 sm:p-6 mb-4 shadow-inner">
+          <header className="flex flex-wrap justify-between items-start gap-3 border-b-2 border-amber-700 pb-3 mb-4">
+            <div className="flex items-center gap-3">
+              <img src="/logo.png" alt="Arizona Car World" className="w-14 h-14 object-contain" />
+              <div>
+                <p className="font-bold text-sm sm:text-base text-gray-900">Arizona Car World</p>
+                <p className="text-[11px] text-gray-600">Detailing · PPF · Tint</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-lg sm:text-xl font-bold text-amber-700">INVOICE</p>
+              <p className="font-mono text-sm text-gray-900">{sale.invoice_number}</p>
+              <p className="text-[11px] text-gray-500">
+                {formatDateTime(sale.sale_date || sale.created_at)}
+              </p>
+            </div>
+          </header>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm mb-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold mb-1">
+                Bill To
+              </p>
+              <p className="font-semibold">{sale.customer_name}</p>
+              {sale.customer_phone && <p className="text-gray-700">{sale.customer_phone}</p>}
+              {(sale.car_model || sale.car_plate) && (
+                <p className="text-gray-600">
+                  Vehicle: {[sale.car_model, sale.car_plate].filter(Boolean).join(' · ')}
+                </p>
+              )}
+            </div>
+            <div className="sm:text-right">
+              <p className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold mb-1">
+                Payment
+              </p>
+              <p className="capitalize font-medium">{sale.payment_method?.replace('_', ' ')}</p>
+            </div>
+          </div>
+
+          {loading && <p className="text-gray-500 text-sm">Loading invoice items…</p>}
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+
+          {!loading && !error && (
+            <>
+              <table className="w-full text-xs sm:text-sm mb-4">
+                <thead>
+                  <tr className="bg-amber-50 border-y border-amber-200">
+                    <th className="text-left py-2 px-2">Description</th>
+                    <th className="text-center py-2 px-2 w-12">Qty</th>
+                    <th className="text-right py-2 px-2 w-20">Unit</th>
+                    <th className="text-right py-2 px-2 w-24">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((it) => (
+                    <tr key={it.id} className="border-b border-gray-100">
+                      <td className="py-2 px-2">{it.service_name}</td>
+                      <td className="text-center py-2 px-2">{it.quantity}</td>
+                      <td className="text-right py-2 px-2">{formatCurrency(it.unit_price)}</td>
+                      <td className="text-right py-2 px-2 font-medium">
+                        {Number(it.line_total) > 0 ? formatCurrency(it.line_total) : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                  {items.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="py-4 text-center text-gray-500">No items</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+
+              <div className="flex justify-end">
+                <div className="w-full sm:w-64 space-y-1 text-xs sm:text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span>{formatCurrency(sale.subtotal)}</span>
+                  </div>
+                  {Number(sale.discount) > 0 && (
+                    <div className="flex justify-between text-red-700">
+                      <span>Discount</span>
+                      <span>−{formatCurrency(sale.discount)}</span>
+                    </div>
+                  )}
+                  {Number(sale.tax_amount) > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Tax ({sale.tax_rate}%)</span>
+                      <span>{formatCurrency(sale.tax_amount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold text-amber-800 border-t-2 border-amber-700 pt-1.5 text-base">
+                    <span>Total</span>
+                    <span>{formatCurrency(sale.total_amount)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {sale.notes && (
+                <p className="text-xs text-gray-600 mt-3 border-t border-gray-200 pt-2">
+                  <strong>Notes:</strong> {sale.notes}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={loading || !!error}
+              onClick={() => onPrint('thermal')}
+              className="btn-outline flex items-center justify-center gap-2 text-sm"
+            >
+              <Printer size={16} /> Thermal (80mm)
+            </button>
+            <button
+              type="button"
+              disabled={loading || !!error}
+              onClick={() => onPrint('a4')}
+              className="btn-outline flex items-center justify-center gap-2 text-sm"
+            >
+              <Printer size={16} /> A4 Invoice
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={loading || !!error}
+              onClick={() => downloadLuxuryInvoicePdf(sale, items, { format: 'a4' })}
+              className="btn-outline flex items-center justify-center gap-2 text-sm"
+            >
+              <Download size={16} /> PDF (A4)
+            </button>
+            <button
+              type="button"
+              disabled={loading || !!error}
+              onClick={() => downloadLuxuryInvoicePdf(sale, items, { format: 'thermal' })}
+              className="btn-outline flex items-center justify-center gap-2 text-sm"
+            >
+              <Download size={16} /> PDF (Thermal)
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={loading || !!error || !customerPhone}
+              onClick={() => openWhatsApp(customerPhone, buildInvoiceWhatsAppMessage(sale, items))}
+              className="btn-gold flex items-center justify-center gap-2 text-sm py-2"
+            >
+              <MessageCircle size={16} /> WhatsApp Customer
+            </button>
+            <button
+              type="button"
+              disabled={loading || !!error}
+              onClick={() => openWhatsApp(null, buildInvoiceWhatsAppMessage(sale, items))}
+              className="btn-outline flex items-center justify-center gap-2 text-sm"
+            >
+              <MessageCircle size={16} /> Share to Shop
+            </button>
+          </div>
+        </div>
+
+        {inventoryUsage.length > 0 && (
+          <p className="text-[11px] text-luxury-muted mt-3">
+            Inventory used: {inventoryUsage.map((u) => `${u.name} (−${u.total}${u.stock_type === 'meter' ? 'm' : ' pcs'})`).join(', ')}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

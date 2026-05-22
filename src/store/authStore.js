@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 let authSubscription = null;
+let signInInFlight = false;
 
 export const useAuthStore = create((set, get) => ({
   user: null,
@@ -14,21 +15,41 @@ export const useAuthStore = create((set, get) => ({
 
     set({ loading: true });
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      await get().fetchProfile(session.user);
-    } else {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await get().fetchProfile(session.user);
+      } else {
+        set({ user: null, profile: null, loading: false });
+      }
+    } catch {
       set({ user: null, profile: null, loading: false });
     }
 
     if (!authSubscription) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        async (_event, session) => {
-          if (session?.user) {
-            set({ loading: true });
-            await get().fetchProfile(session.user);
-          } else {
+        (event, session) => {
+          if (signInInFlight) return;
+
+          if (event === 'SIGNED_OUT') {
             set({ user: null, profile: null, loading: false });
+            return;
+          }
+
+          if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+            if (session?.user) set({ user: session.user });
+            return;
+          }
+
+          if (event === 'SIGNED_IN' && session?.user) {
+            const current = get();
+            if (current.user?.id === session.user.id && current.profile) {
+              set({ user: session.user });
+              return;
+            }
+            get().fetchProfile(session.user).catch(() => {
+              set({ user: null, profile: null, loading: false });
+            });
           }
         }
       );
@@ -64,33 +85,39 @@ export const useAuthStore = create((set, get) => ({
       throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env');
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-
-    if (!data.user) {
-      throw new Error('Login failed. No user returned.');
-    }
-
-    let profile;
+    signInInFlight = true;
     try {
-      profile = await get().fetchProfile(data.user);
-    } catch (profileError) {
-      await supabase.auth.signOut();
-      set({ user: null, profile: null, loading: false });
-      throw profileError;
-    }
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      if (!data.user) throw new Error('Login failed. No user returned.');
 
-    if (profile.role !== expectedRole) {
-      await supabase.auth.signOut();
-      set({ user: null, profile: null, loading: false });
+      const { data: profile, error: profileErr } = await supabase
+        .from('profiles')
+        .select('id, full_name, role, created_at')
+        .eq('id', data.user.id)
+        .maybeSingle();
 
-      if (expectedRole === 'admin') {
-        throw new Error('This account is not an admin. Use Employee Login instead.');
+      if (profileErr) {
+        await supabase.auth.signOut();
+        throw mapProfileError(profileErr);
       }
-      throw new Error('This account is an admin. Use Admin Login instead.');
-    }
+      if (!profile) {
+        await supabase.auth.signOut();
+        throw new Error('No profile found for this account.');
+      }
+      if (profile.role !== expectedRole) {
+        await supabase.auth.signOut();
+        if (expectedRole === 'admin') {
+          throw new Error('This account is not an admin. Use Employee Login instead.');
+        }
+        throw new Error('This account is an admin. Use Admin Login instead.');
+      }
 
-    return { user: data.user, profile };
+      set({ user: data.user, profile, loading: false });
+      return { user: data.user, profile };
+    } finally {
+      signInInFlight = false;
+    }
   },
 
   signOut: async () => {

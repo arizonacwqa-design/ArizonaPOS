@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatCurrency, formatDate, formatStock } from '@/lib/format';
-import { startOfMonth } from 'date-fns';
+import { startOfMonth, parseISO } from 'date-fns';
 
 export default function Purchases() {
   const { user } = useAuthStore();
@@ -39,8 +39,12 @@ export default function Purchases() {
     setItems(itemsRes.data || []);
     const list = purchasesRes.data || [];
     setPurchases(list);
+    const monthStartDate = startOfMonth(new Date());
     const expense = list
-      .filter((p) => p.purchase_date >= monthStart)
+      .filter((p) => {
+        const purchaseDate = parseISO(p.purchase_date);
+        return purchaseDate >= monthStartDate;
+      })
       .reduce((sum, p) => sum + Number(p.total_cost || 0), 0);
     setMonthExpense(expense);
   }
@@ -61,6 +65,20 @@ export default function Purchases() {
     if (qtyAdded <= 0) {
       setMessage('Enter quantity or meters added');
       return;
+    }
+
+    // Validate bill number uniqueness if provided
+    if (form.bill_number.trim()) {
+      const { data: existingBill } = await supabase
+        .from('inventory_purchases')
+        .select('id')
+        .eq('bill_number', form.bill_number.trim())
+        .maybeSingle();
+      
+      if (existingBill) {
+        setMessage('Bill number already exists. Use a unique bill number or leave it blank.');
+        return;
+      }
     }
 
     setLoading(true);
@@ -99,9 +117,9 @@ export default function Purchases() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
       <header className="mb-6">
-        <h1 className="text-3xl font-display text-gold-400">Inventory Purchases</h1>
+        <h1 className="text-2xl sm:text-3xl font-display font-bold text-gold-400">Inventory Purchases</h1>
         <p className="text-luxury-muted">
           Stock IN with bill number, supplier, date, and expense tracking
         </p>

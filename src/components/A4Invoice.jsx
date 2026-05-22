@@ -16,13 +16,13 @@ const A4Invoice = forwardRef(function A4Invoice(
       ref={ref}
       className="hidden print:block bg-white text-gray-900 p-10 max-w-[210mm] mx-auto invoice-luxury"
     >
-      <header className="flex justify-between items-start border-b-4 border-amber-600 pb-6 mb-6 bg-gradient-to-r from-black to-gray-900 -mx-10 -mt-10 px-10 pt-8 text-white rounded-b-lg">
-        <Logo size="lg" showText />
+      <header className="flex justify-between items-center border-b-4 border-amber-600 pb-6 mb-6 bg-white -mx-10 -mt-10 px-10 pt-8 text-gray-900 rounded-b-lg">
+        <Logo size="xl" />
         <div className="text-right text-sm flex flex-col items-end gap-2">
           <InvoiceQr sale={sale} size={80} />
-          <p className="text-2xl font-bold text-amber-400 font-display">INVOICE</p>
-          <p className="font-mono text-lg mt-1">{sale.invoice_number}</p>
-          <p className="text-gray-600 mt-2">{formatDateTime(sale.sale_date || sale.created_at)}</p>
+          <p className="text-2xl font-bold text-amber-700 font-display">INVOICE</p>
+          <p className="font-mono text-lg mt-1 text-gray-900">{sale.invoice_number}</p>
+          <p className="text-gray-500 mt-1">{formatDateTime(sale.sale_date || sale.created_at)}</p>
         </div>
       </header>
 

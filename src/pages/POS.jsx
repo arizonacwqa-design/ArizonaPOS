@@ -56,6 +56,7 @@ export default function POS() {
   const [customer, setCustomer] = useState(emptyCustomer);
   const [notes, setNotes] = useState('');
   const [discount, setDiscount] = useState(0);
+  const [discountType, setDiscountType] = useState('flat'); // 'flat' | 'percent'
   const [taxEnabled, setTaxEnabled] = useState(DEFAULT_TAX_RATE > 0);
   const [taxRate, setTaxRate] = useState(DEFAULT_TAX_RATE);
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -91,8 +92,8 @@ export default function POS() {
 
   const subtotal = cart.reduce((sum, item) => sum + item.line_total, 0);
   const billing = useMemo(
-    () => calcBillingTotals(subtotal, discount, taxRate, taxEnabled),
-    [subtotal, discount, taxRate, taxEnabled]
+    () => calcBillingTotals(subtotal, discount, taxRate, taxEnabled, discountType),
+    [subtotal, discount, taxRate, taxEnabled, discountType]
   );
   const inventoryUsage = useMemo(() => aggregateInventoryUsage(cart), [cart]);
   const selectedInventoryIds = useMemo(
@@ -125,18 +126,19 @@ export default function POS() {
   }
 
   function addMaterial(item) {
+    const step = item.stock_type === 'meter' ? 0.5 : 1;
     const key = `mat-${item.id}`;
     const existing = cart.find((c) => cartLineKey(c) === key);
     if (existing) {
       setCart(
         cart.map((c) =>
           cartLineKey(c) === key
-            ? updateCartLineQuantity(c, c.quantity + (item.stock_type === 'meter' ? 1 : 1))
+            ? updateCartLineQuantity(c, c.quantity + step)
             : c
         )
       );
     } else {
-      setCart([...cart, cartLineFromInventory(item, item.stock_type === 'meter' ? 1 : 1)]);
+      setCart([...cart, cartLineFromInventory(item, step)]);
     }
     setMessage('');
   }
@@ -152,8 +154,13 @@ export default function POS() {
   }
 
   async function completeSale() {
-    if (!customer.customer_name.trim()) {
+    const name = customer.customer_name.trim();
+    if (!name) {
       setMessage('Customer name is required');
+      return;
+    }
+    if (name.length > 100) {
+      setMessage('Customer name must be 100 characters or less');
       return;
     }
     if (cart.length === 0) {
@@ -170,6 +177,22 @@ export default function POS() {
     setLoading(true);
     setMessage('');
 
+    let customerId = null;
+    let customerWarning = '';
+    try {
+      customerId = await upsertCustomerFromSale({
+        customer_name: customer.customer_name,
+        customer_phone: customer.customer_phone,
+        total_amount: billing.total,
+      });
+    } catch (e) {
+      // Don't block the sale — record a warning we'll show with the success message.
+      customerWarning =
+        e?.code === 'PGRST205' || /relation .* does not exist/i.test(e?.message || '')
+          ? 'Sale saved, but customers table is missing — run migration 005.'
+          : `Sale saved, but customer record not created: ${e?.message || 'unknown error'}`;
+    }
+
     const salePayload = {
       ...customer,
       customer_name: customer.customer_name.trim(),
@@ -181,56 +204,50 @@ export default function POS() {
       payment_method: paymentMethod,
       employee_id: user?.id,
       notes: notes.trim() || null,
+      customer_id: customerId || null,
     };
 
-    let sale;
-    let saleError;
-    ({ data: sale, error: saleError } = await supabase
-      .from('sales')
-      .insert(salePayload)
-      .select()
-      .single());
+    const itemsPayload = saleItemsPayload(cart, null).map(({ sale_id: _ignore, ...rest }) => rest);
 
-    if (saleError?.message?.includes('tax_rate')) {
-      const { tax_rate, tax_amount, ...legacy } = salePayload;
-      ({ data: sale, error: saleError } = await supabase
-        .from('sales')
-        .insert({ ...legacy, total_amount: billing.total })
-        .select()
-        .single());
-    }
-
-    if (saleError) {
-      setMessage(saleError.message);
-      setLoading(false);
-      return;
-    }
-
-    const { data: items, error: itemsError } = await supabase
-      .from('sale_items')
-      .insert(saleItemsPayload(cart, sale.id))
-      .select('*, inventory_items(name, stock_type)');
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('create_sale', {
+      p_sale: salePayload,
+      p_items: itemsPayload,
+    });
 
     setLoading(false);
 
-    if (itemsError) {
-      setMessage(itemsError.message);
+    if (rpcError) {
+      const msg = rpcError.message || '';
+      let errorMsg = msg;
+      
+      if (msg.includes('Insufficient stock')) {
+        // Preserve full error details for insufficient stock
+        errorMsg = msg;
+      } else if (msg.includes('create_sale') || rpcError.code === 'PGRST202') {
+        errorMsg = 'Sale creation RPC not available. Admin must run migrations (006_pos_security_atomicity.sql).';
+      } else if (msg.includes('Not authorized')) {
+        errorMsg = 'You do not have permission to create sales.';
+      }
+      
+      setMessage(errorMsg);
       return;
     }
 
-    const customerId = await upsertCustomerFromSale({
-      customer_name: customer.customer_name,
-      customer_phone: customer.customer_phone,
-      total_amount: billing.total,
-    });
-    if (customerId) {
-      await supabase.from('sales').update({ customer_id: customerId }).eq('id', sale.id);
+    const sale = rpcResult?.sale;
+    const items = rpcResult?.items || [];
+    if (!sale) {
+      setMessage('Sale was not created. Please try again.');
+      return;
     }
 
     setLastSale(sale);
     setLastItems(items);
     setLastInventoryUsage(inventoryUsage);
-    setMessage(`Invoice ${sale.invoice_number} saved — stock updated automatically`);
+    setMessage(
+      customerWarning
+        ? `Invoice ${sale.invoice_number} saved — ${customerWarning}`
+        : `Invoice ${sale.invoice_number} saved — stock updated automatically`
+    );
     setCart([]);
     setCustomer(emptyCustomer);
     setNotes('');
@@ -265,11 +282,11 @@ export default function POS() {
   return (
     <div className="min-h-full p-4 sm:p-6 lg:p-8 animate-fade-in">
       {/* Header */}
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+      <header className="mb-6 lg:mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-gold-500 mb-1">Point of Sale</p>
-          <h1 className="text-3xl lg:text-4xl font-display text-gold-400">POS Billing</h1>
-          <p className="text-luxury-muted mt-1 max-w-xl">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-gold-400">POS Billing</h1>
+          <p className="text-luxury-muted mt-1 max-w-xl text-sm sm:text-base">
             Create invoices, link services to inventory, and auto-deduct meter & quantity stock on save
           </p>
         </div>
@@ -280,9 +297,9 @@ export default function POS() {
         )}
       </header>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Customer + Services */}
-        <div className="xl:col-span-7 space-y-6">
+        <div className="lg:col-span-7 space-y-6">
           {/* Step 1 — Customer */}
           <section className="rounded-2xl border border-luxury-border bg-luxury-charcoal/80 overflow-hidden">
             <div className="flex items-center gap-3 border-b border-gold-600/15 bg-luxury-slate/40 px-5 py-3">
@@ -376,7 +393,7 @@ export default function POS() {
               ))}
             </div>
 
-            <div className="p-5 grid grid-cols-2 md:grid-cols-3 gap-3 max-h-[280px] overflow-y-auto">
+            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-[280px] overflow-y-auto">
               {filteredServices.map((s) => (
                 <button
                   key={s.id}
@@ -428,8 +445,8 @@ export default function POS() {
         </div>
 
         {/* Right: Cart + Invoice */}
-        <div className="xl:col-span-5 space-y-6">
-          <section className="rounded-2xl border border-gold-600/20 bg-luxury-charcoal sticky top-6">
+        <div className="lg:col-span-5 space-y-6">
+          <section className="rounded-2xl border border-gold-600/20 bg-luxury-charcoal lg:sticky lg:top-6">
             <div className="flex items-center gap-3 border-b border-gold-600/15 px-5 py-3">
               <StepBadge n={4} />
               <ShoppingCart className="text-gold-400" size={20} />
@@ -466,6 +483,7 @@ export default function POS() {
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
+                          aria-label="Decrease quantity"
                           onClick={() =>
                             updateQty(
                               item._key,
@@ -486,6 +504,7 @@ export default function POS() {
                         />
                         <button
                           type="button"
+                          aria-label="Increase quantity"
                           onClick={() =>
                             updateQty(
                               item._key,
@@ -499,6 +518,7 @@ export default function POS() {
                       </div>
                       <button
                         type="button"
+                        aria-label={`Remove ${item.service_name} from cart`}
                         onClick={() => removeLine(item._key)}
                         className="text-red-400 hover:text-red-300 p-1"
                       >
@@ -535,15 +555,60 @@ export default function POS() {
                   <span>{formatCurrency(billing.subtotal)}</span>
                 </div>
                 <div>
-                  <label className="label-luxury">Discount (QAR)</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="label-luxury mb-0">
+                      Discount {discountType === 'percent' ? '(%)' : '(QAR)'}
+                    </label>
+                    <div className="inline-flex rounded-md overflow-hidden border border-luxury-border text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => setDiscountType('flat')}
+                        className={`px-2 py-0.5 ${
+                          discountType === 'flat'
+                            ? 'bg-gold-600/25 text-gold-300'
+                            : 'text-luxury-muted hover:text-gold-300'
+                        }`}
+                      >
+                        QAR
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDiscountType('percent')}
+                        className={`px-2 py-0.5 ${
+                          discountType === 'percent'
+                            ? 'bg-gold-600/25 text-gold-300'
+                            : 'text-luxury-muted hover:text-gold-300'
+                        }`}
+                      >
+                        %
+                      </button>
+                    </div>
+                  </div>
                   <input
                     type="number"
                     min="0"
+                    max={discountType === 'percent' ? '100' : undefined}
                     step="0.01"
                     className="input-luxury"
                     value={discount}
-                    onChange={(e) => setDiscount(e.target.value)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === '') return setDiscount('');
+                      const n = Number(v);
+                      const max = discountType === 'percent' ? 100 : Infinity;
+                      setDiscount(Number.isFinite(n) && n >= 0 ? Math.min(n, max) : 0);
+                    }}
                   />
+                  {discountType === 'percent' && billing.rawDiscount > 0 && (
+                    <p className="text-[11px] text-gold-300/80 mt-1">
+                      = {formatCurrency(billing.rawDiscount)} off
+                    </p>
+                  )}
+                  {billing.discountCapped && (
+                    <p className="text-[11px] text-amber-400 mt-1">
+                      Discount capped at subtotal ({formatCurrency(billing.subtotal)}).
+                    </p>
+                  )}
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <label className="flex items-center gap-2 text-sm text-gold-300 cursor-pointer">
@@ -563,7 +628,12 @@ export default function POS() {
                       step="0.5"
                       className="input-luxury flex-1 min-w-[80px] py-2"
                       value={taxRate}
-                      onChange={(e) => setTaxRate(e.target.value)}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === '') return setTaxRate('');
+                        const n = Number(v);
+                        setTaxRate(Number.isFinite(n) && n >= 0 ? Math.min(n, 100) : 0);
+                      }}
                       placeholder="%"
                     />
                   )}
@@ -608,7 +678,7 @@ export default function POS() {
               <button
                 type="button"
                 onClick={completeSale}
-                disabled={loading}
+                disabled={loading || cart.length === 0 || !customer.customer_name.trim()}
                 className="btn-gold w-full mt-4 flex items-center justify-center gap-2 py-3"
               >
                 <CheckCircle size={20} />

@@ -87,8 +87,13 @@ export default function Expenses() {
 
   async function remove(id) {
     if (!confirm('Delete this expense?')) return;
-    await supabase.from('operating_expenses').delete().eq('id', id);
-    load();
+    const { error } = await supabase.from('operating_expenses').delete().eq('id', id);
+    if (error) {
+      setMessage(`Error deleting expense: ${error.message}`);
+    } else {
+      setMessage('Expense deleted');
+      load();
+    }
   }
 
   if (loading) {

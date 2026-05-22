@@ -1,7 +1,10 @@
 export function formatCurrency(amount) {
-  return new Intl.NumberFormat('en-QA', {
+  const locale = import.meta.env.VITE_LOCALE || 'en-QA';
+  const currency = locale === 'en-QA' ? 'QAR' : locale === 'en-AE' ? 'AED' : 'QAR';
+  
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: 'QAR',
+    currency: currency,
     minimumFractionDigits: 2,
   }).format(Number(amount) || 0);
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Shield, User } from 'lucide-react';
 import Logo from '@/components/Logo';
+import ThemeToggle from '@/components/ThemeToggle';
 import { useAuthStore } from '@/store/authStore';
 import { getAuthErrorMessage } from '@/lib/authErrors';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -59,8 +60,13 @@ export default function Login() {
       <div className="absolute inset-0 bg-gradient-to-br from-gold-900/10 via-transparent to-gold-600/5" />
 
       <div className="card-luxury w-full max-w-md mx-4 relative z-10 shadow-gold">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle variant="icon" />
+        </div>
         <div className="flex justify-center mb-6">
-          <Logo size="lg" />
+          <div className="bg-white rounded-2xl p-4 shadow-gold">
+            <Logo size="lg" />
+          </div>
         </div>
 
         <div className="flex rounded-lg border border-luxury-border overflow-hidden mb-6">

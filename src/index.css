@@ -3,9 +3,48 @@
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply bg-luxury-black text-white font-sans;
+  /* Dark theme (default) */
+  :root {
+    --luxury-black: 10 10 10;       /* page background */
+    --luxury-charcoal: 20 20 20;    /* cards, sidebar */
+    --luxury-slate: 28 28 28;       /* inputs, subtle panels */
+    --luxury-border: 42 42 42;      /* borders */
+    --luxury-muted: 136 136 136;    /* muted text */
+    --luxury-foreground: 255 255 255; /* body text */
   }
+
+  /* Light theme — applied as .theme-light on <html> */
+  .theme-light {
+    --luxury-black: 244 243 238;    /* warm off-white page bg */
+    --luxury-charcoal: 255 255 255; /* white cards, sidebar */
+    --luxury-slate: 240 239 232;    /* input bg, subtle panels */
+    --luxury-border: 220 218 208;   /* hairline borders */
+    --luxury-muted: 95 95 95;       /* darker muted text for contrast */
+    --luxury-foreground: 24 24 27;  /* near-black body text */
+  }
+
+  body {
+    @apply bg-luxury-black text-luxury-foreground font-sans transition-colors;
+  }
+
+  /* Light mode patches for color utilities that bake in dark assumptions */
+  .theme-light .text-white { color: rgb(var(--luxury-foreground)); }
+  .theme-light .text-gray-300 { color: rgb(75 85 99); }
+  .theme-light .text-gray-400 { color: rgb(75 85 99); }
+  .theme-light .text-gray-500 { color: rgb(75 85 99); }
+  .theme-light .text-amber-400 { color: rgb(180 83 9); }
+  .theme-light .text-amber-300 { color: rgb(180 83 9); }
+  .theme-light .text-red-400 { color: rgb(185 28 28); }
+  .theme-light .text-red-300 { color: rgb(185 28 28); }
+  .theme-light .text-red-200 { color: rgb(127 29 29); }
+  .theme-light .bg-amber-950\/20,
+  .theme-light .bg-amber-950\/30 { background-color: rgb(254 252 232); }
+  .theme-light .bg-red-950\/20,
+  .theme-light .bg-red-950\/30 { background-color: rgb(254 242 242); }
+  .theme-light .border-red-500\/20,
+  .theme-light .border-red-500\/30,
+  .theme-light .border-red-500\/40,
+  .theme-light .border-red-500\/50 { border-color: rgb(252 165 165); }
 
   ::-webkit-scrollbar {
     width: 8px;
@@ -77,7 +116,7 @@
 
   .table-luxury th,
   .table-luxury td {
-    @apply py-3 px-3;
+    @apply py-3 px-2 sm:px-3;
   }
 }
 

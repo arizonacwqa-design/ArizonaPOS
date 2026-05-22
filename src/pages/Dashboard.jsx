@@ -20,14 +20,17 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { supabase } from '@/lib/supabase';
+import { useThemeStore } from '@/store/themeStore';
 import { formatCurrency, formatStock, isLowStock } from '@/lib/format';
 import StatCard from '@/components/StatCard';
 import LowStockBanner from '@/components/LowStockBanner';
 import LuxuryTable from '@/components/LuxuryTable';
 import { StatCardSkeleton, PageHeaderSkeleton } from '@/components/LoadingSkeleton';
-import { startOfDay, startOfMonth, subDays, format } from 'date-fns';
+import { startOfDay, startOfMonth, subDays, format, parseISO } from 'date-fns';
 
 export default function Dashboard() {
+  const theme = useThemeStore((s) => s.theme);
+  const isDark = theme === 'dark';
   const [todaySales, setTodaySales] = useState(0);
   const [monthSales, setMonthSales] = useState(0);
   const [monthExpenses, setMonthExpenses] = useState(0);
@@ -48,7 +51,7 @@ export default function Dashboard() {
     setLoading(true);
     const today = startOfDay(new Date()).toISOString();
     const monthStart = startOfMonth(new Date()).toISOString();
-    const monthDate = format(new Date(), 'yyyy-MM-01');
+    const monthStartDate = startOfMonth(new Date());
 
     const [salesRes, inventoryRes, saleItemsRes, purchasesRes, opExpRes] = await Promise.all([
       supabase.from('sales').select('total_amount, sale_date, created_at'),
@@ -78,11 +81,17 @@ export default function Dashboard() {
       .reduce((sum, s) => sum + Number(s.total_amount), 0);
 
     const purchaseTotal = purchases
-      .filter((p) => p.purchase_date >= monthDate)
+      .filter((p) => {
+        const purchaseDate = parseISO(p.purchase_date);
+        return purchaseDate >= monthStartDate;
+      })
       .reduce((sum, p) => sum + Number(p.total_cost), 0);
 
     const operatingTotal = opExp
-      .filter((e) => e.expense_date >= monthDate)
+      .filter((e) => {
+        const expenseDate = parseISO(e.expense_date);
+        return expenseDate >= monthStartDate;
+      })
       .reduce((sum, e) => sum + Number(e.amount), 0);
 
     const serviceStats = {};
@@ -147,17 +156,17 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-8 animate-fade-in">
-      <header className="mb-8">
-        <h1 className="text-3xl font-display text-gold-400">Dashboard</h1>
-        <p className="text-luxury-muted mt-1">Arizona Car World — analytics & alerts</p>
+    <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
+      <header className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-display font-bold text-gold-400">Dashboard</h1>
+        <p className="text-luxury-muted mt-1 text-sm sm:text-base">Arizona Car World — analytics & alerts</p>
       </header>
 
       {!bannerDismissed && (
         <LowStockBanner items={lowStockItems} onDismiss={() => setBannerDismissed(true)} />
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <StatCard title="Today's Sales" value={formatCurrency(todaySales)} icon={DollarSign} />
         <StatCard title="Monthly Sales" value={formatCurrency(monthSales)} icon={TrendingUp} />
         <StatCard
@@ -196,10 +205,15 @@ export default function Dashboard() {
           <h2 className="text-lg font-semibold text-gold-400 mb-4">Daily Sales — Last 7 Days</h2>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={chartData}>
-              <XAxis dataKey="day" stroke="#888" />
-              <YAxis stroke="#888" />
+              <XAxis dataKey="day" stroke={isDark ? '#888' : '#666'} />
+              <YAxis stroke={isDark ? '#888' : '#666'} />
               <Tooltip
-                contentStyle={{ background: '#141414', border: '1px solid #c9a227' }}
+                contentStyle={{
+                  background: isDark ? '#141414' : '#ffffff',
+                  border: '1px solid #c9a227',
+                  color: isDark ? '#fff' : '#1a1a1a',
+                }}
+                labelStyle={{ color: isDark ? '#fff' : '#1a1a1a' }}
                 formatter={(v) => [formatCurrency(v), 'Sales']}
               />
               <Bar dataKey="sales" fill="#c9a227" radius={[4, 4, 0, 0]} />

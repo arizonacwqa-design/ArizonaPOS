@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# SPA fallback so deep links work even outside HashRouter.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -16,17 +16,21 @@ export default {
           800: '#6f5219',
           900: '#5c4418',
         },
+        // CSS-variable backed so the whole palette flips when .theme-light is
+        // added to <html>. Each entry uses `rgb(var(--x) / <alpha-value>)` so
+        // opacity utilities like bg-luxury-black/70 keep working.
         luxury: {
-          black: '#0a0a0a',
-          charcoal: '#141414',
-          slate: '#1c1c1c',
-          border: '#2a2a2a',
-          muted: '#888888',
+          black: 'rgb(var(--luxury-black) / <alpha-value>)',
+          charcoal: 'rgb(var(--luxury-charcoal) / <alpha-value>)',
+          slate: 'rgb(var(--luxury-slate) / <alpha-value>)',
+          border: 'rgb(var(--luxury-border) / <alpha-value>)',
+          muted: 'rgb(var(--luxury-muted) / <alpha-value>)',
+          foreground: 'rgb(var(--luxury-foreground) / <alpha-value>)',
         },
       },
       fontFamily: {
-        display: ['Georgia', 'serif'],
-        sans: ['Segoe UI', 'system-ui', 'sans-serif'],
+        display: ['Outfit', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
       },
       boxShadow: {
         gold: '0 0 30px rgba(201, 162, 39, 0.15)',
