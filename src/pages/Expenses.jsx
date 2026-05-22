@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import { formatCurrency, formatDate } from '@/lib/format';
 import LuxuryTable from '@/components/LuxuryTable';
 import { PageHeaderSkeleton, TableSkeleton } from '@/components/LoadingSkeleton';
+import { useTranslation } from '@/lib/translations';
 
 const CATEGORIES = [
   { value: 'rent', label: 'Rent' },
@@ -31,6 +32,7 @@ export default function Expenses() {
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const { t } = useTranslation();
 
   useEffect(() => {
     load();
@@ -108,17 +110,17 @@ export default function Expenses() {
   return (
     <div className="p-8 animate-fade-in">
       <header className="mb-8">
-        <p className="text-xs uppercase tracking-[0.2em] text-gold-500 mb-1">Finance</p>
-        <h1 className="text-3xl font-display text-gold-400">Expense Tracking</h1>
+        <p className="text-xs uppercase tracking-[0.2em] text-gold-500 mb-1">{t('finance')}</p>
+        <h1 className="text-3xl font-display text-gold-400">{t('expenseTracking')}</h1>
         <p className="text-luxury-muted mt-1">Rent, salaries, utilities, and profit calculation</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <SummaryCard label="Monthly Revenue" value={formatCurrency(monthSales)} />
-        <SummaryCard label="Operating Expenses" value={formatCurrency(monthOperating)} />
-        <SummaryCard label="Inventory Purchases" value={formatCurrency(purchaseExpenses)} />
+        <SummaryCard label={t('monthlyRevenue')} value={formatCurrency(monthSales)} />
+        <SummaryCard label={t('operatingExpenses')} value={formatCurrency(monthOperating)} />
+        <SummaryCard label={t('inventoryPurchases')} value={formatCurrency(purchaseExpenses)} />
         <SummaryCard
-          label="Net Profit (est.)"
+          label={t('netProfitEstimated')}
           value={formatCurrency(profit)}
           highlight={profit >= 0 ? 'positive' : 'negative'}
         />
@@ -126,12 +128,12 @@ export default function Expenses() {
 
       {isAdmin() && (
         <form onSubmit={handleSubmit} className="card-luxury mb-8">
-          <h2 className="text-lg font-semibold text-gold-400 mb-4 flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-gold-400 mb-4 flex items-center gap-2">{t('addExpense')}
             <Plus size={20} /> Add Expense
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <label className="label-luxury">Category</label>
+              <label className="label-luxury">{t('category')}</label>
               <select
                 className="input-luxury"
                 value={form.category}
@@ -145,7 +147,7 @@ export default function Expenses() {
               </select>
             </div>
             <div>
-              <label className="label-luxury">Description</label>
+              <label className="label-luxury">{t('description')}</label>
               <input
                 className="input-luxury"
                 required
@@ -154,7 +156,7 @@ export default function Expenses() {
               />
             </div>
             <div>
-              <label className="label-luxury">Amount (QAR)</label>
+              <label className="label-luxury">{t('amount')}</label>
               <input
                 type="number"
                 min="0"
@@ -166,7 +168,7 @@ export default function Expenses() {
               />
             </div>
             <div>
-              <label className="label-luxury">Date</label>
+              <label className="label-luxury">{t('date')}</label>
               <input
                 type="date"
                 className="input-luxury"
@@ -175,7 +177,7 @@ export default function Expenses() {
               />
             </div>
             <div className="md:col-span-2">
-              <label className="label-luxury">Notes</label>
+              <label className="label-luxury">{t('notes')}</label>
               <input
                 className="input-luxury"
                 value={form.notes}
@@ -185,7 +187,7 @@ export default function Expenses() {
           </div>
           {message && <p className="text-sm text-gold-400 mt-3">{message}</p>}
           <button type="submit" className="btn-gold mt-4 flex items-center gap-2">
-            <Receipt size={18} /> Save Expense
+            <Receipt size={18} /> {t('saveExpense')}
           </button>
         </form>
       )}
@@ -194,12 +196,12 @@ export default function Expenses() {
         <h2 className="text-lg font-semibold text-gold-400 mb-4">All Operating Expenses</h2>
         <LuxuryTable
           columns={[
-            { key: 'date', header: 'Date', render: (r) => formatDate(r.expense_date) },
-            { key: 'category', header: 'Category', render: (r) => r.category },
-            { key: 'description', header: 'Description' },
+            { key: 'date', header: t('date'), render: (r) => formatDate(r.expense_date) },
+            { key: 'category', header: t('category'), render: (r) => r.category },
+            { key: 'description', header: t('description') },
             {
               key: 'amount',
-              header: 'Amount',
+              header: t('amount'),
               align: 'right',
               render: (r) => formatCurrency(r.amount),
               cellClassName: 'text-gold-400 font-medium',
@@ -224,7 +226,7 @@ export default function Expenses() {
               : []),
           ]}
           rows={expenses}
-          emptyMessage="No operating expenses yet. Run supabase/migrations/005_advanced_features.sql if the table is missing."
+          emptyMessage={t('noOperatingExpenses')}
         />
       </div>
     </div>
