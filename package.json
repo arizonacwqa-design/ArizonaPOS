@@ -7,10 +7,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
+    "preview": "npm run build && wrangler dev",
     "electron": "electron .",
     "dist": "npm run build && electron-builder",
-    "dist-win": "npm run build && electron-builder --win"
+    "dist-win": "npm run build && electron-builder --win",
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.8",
@@ -28,13 +29,15 @@
     "zustand": "^5.0.5"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.38.0",
     "@vitejs/plugin-react": "^4.5.0",
     "autoprefixer": "^10.4.21",
     "electron": "^31.7.7",
     "electron-builder": "^24.13.3",
     "postcss": "^8.5.4",
     "tailwindcss": "^3.4.17",
-    "vite": "^6.4.1"
+    "vite": "^6.4.1",
+    "wrangler": "^4.94.0"
   },
   "build": {
     "appId": "com.arizonacarworld.pos",
@@ -49,7 +52,6 @@
     ],
     "win": {
       "target": "nsis"
-      
     }
   }
 }
