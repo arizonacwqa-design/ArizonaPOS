@@ -3,6 +3,16 @@
 @tailwind utilities;
 
 @layer base {
+  /* Base sizing — Tailwind's defaults assume html font-size 16px.
+     At 16px the desktop layout reads as visually inflated ("zoomed").
+     Dropping to 14.5px scales every rem-based size (text, padding,
+     gaps, button heights) to ~90%, matching the density most desktop
+     POS apps ship at. Mobile is already cramped so this also tightens
+     phone layouts proportionally without breaking touch targets. */
+  html {
+    font-size: 14.5px;
+  }
+
   /* Dark theme (default) */
   :root {
     --luxury-black: 10 10 10;       /* page background */
