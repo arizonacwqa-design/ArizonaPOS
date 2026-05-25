@@ -1,0 +1,5 @@
+# SPA fallback for Cloudflare Pages (and Netlify).
+# All client-side routes resolve to index.html.
+# HashRouter doesn't strictly need this, but it's here as a safety net
+# in case routing ever switches to BrowserRouter.
+/*    /index.html   200
