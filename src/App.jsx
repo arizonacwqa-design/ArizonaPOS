@@ -14,6 +14,7 @@ import Purchases from './pages/Purchases';
 import Reports from './pages/Reports';
 import Services from './pages/Services';
 import Customers from './pages/Customers';
+import Bookings from './pages/Bookings';
 import Backup from './pages/Backup';
 import Settings from './pages/Settings';
 import Expenses from './pages/Expenses';
@@ -74,6 +75,8 @@ export default function App() {
           <Route path="services" element={<Services />} />
 
           <Route path="customers" element={<Customers />} />
+
+          <Route path="bookings" element={<Bookings />} />
 
           <Route
             path="backup"
