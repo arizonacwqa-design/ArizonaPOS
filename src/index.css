@@ -27,6 +27,16 @@
     @apply bg-luxury-black text-luxury-foreground font-sans transition-colors;
   }
 
+  /* Arabic body switches to Cairo (kept in CSS instead of an inline style
+     on <html> so it doesn't override Tailwind's font-sans elsewhere). */
+  html[lang="ar"] body,
+  html[lang="ar"] input,
+  html[lang="ar"] textarea,
+  html[lang="ar"] select,
+  html[lang="ar"] button {
+    font-family: 'Cairo', 'Inter', system-ui, sans-serif;
+  }
+
   /* Light mode patches for color utilities that bake in dark assumptions */
   .theme-light .text-white { color: rgb(var(--luxury-foreground)); }
   .theme-light .text-gray-300 { color: rgb(75 85 99); }

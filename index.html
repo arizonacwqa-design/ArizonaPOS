@@ -28,12 +28,15 @@
           if (l === 'ar') {
             document.documentElement.setAttribute('lang', 'ar');
             document.documentElement.setAttribute('dir', 'rtl');
-            document.documentElement.style.fontFamily = "'Cairo', 'Outfit', 'Inter', sans-serif";
           } else {
             document.documentElement.setAttribute('lang', 'en');
             document.documentElement.setAttribute('dir', 'ltr');
-            document.documentElement.style.fontFamily = "'Outfit', 'Inter', sans-serif";
           }
+          // NOTE: Do NOT set documentElement.style.fontFamily here.
+          // That inline style overrides Tailwind's font-sans on body,
+          // forcing Outfit (a display font) onto buttons/inputs/labels and
+          // making the desktop UI look "zoomed". Body font is set in
+          // src/index.css; Outfit stays as `font-display` for headings only.
         } catch (e) {
           document.documentElement.classList.add('theme-dark');
         }
