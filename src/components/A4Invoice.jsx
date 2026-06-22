@@ -51,6 +51,48 @@ const A4Invoice = forwardRef(function A4Invoice(
         </div>
       </div>
 
+      <table className="w-full text-sm mb-6">
+        <thead>
+          <tr className="bg-amber-50 border-y border-amber-200">
+            <th className="text-left py-3 px-2">Description</th>
+            <th className="text-center py-3 px-2 w-16">Qty</th>
+            <th className="text-right py-3 px-2 w-24">Unit</th>
+            <th className="text-right py-3 px-2 w-28">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items?.map((item) => (
+            <tr key={item.id} className="border-b border-gray-100">
+              <td className="py-3 px-2">{item.service_name}</td>
+              <td className="text-center py-3 px-2">{item.quantity}</td>
+              <td className="text-right py-3 px-2">{formatCurrency(item.unit_price)}</td>
+              <td className="text-right py-3 px-2 font-medium">
+                {Number(item.line_total) > 0 ? formatCurrency(item.line_total) : '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {inventoryUsage.length > 0 && (
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <p className="text-xs uppercase tracking-wider text-amber-700 font-semibold mb-2">
+            Inventory Used (deducted from stock)
+          </p>
+          <ul className="text-sm grid grid-cols-2 gap-2">
+            {inventoryUsage.map((u) => (
+              <li key={u.id} className="flex justify-between">
+                <span>{u.name}</span>
+                <span>
+                  −{u.total}
+                  {u.stock_type === 'meter' ? ' m' : ' pcs'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="flex justify-end">
         <div className="w-64 space-y-2 text-sm">
           <div className="flex justify-between">
