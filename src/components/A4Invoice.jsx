@@ -62,7 +62,7 @@ const A4Invoice = forwardRef(function A4Invoice(
         </thead>
         <tbody>
           {items?.map((item) => (
-            <tr key={item.id} className="border-b border-gray-100">
+            <tr key={item.id} className={`border-b border-gray-100 ${!item.service_id ? 'no-print' : ''}`}>
               <td className="py-3 px-2">{item.service_name}</td>
               <td className="text-center py-3 px-2">{item.quantity}</td>
               <td className="text-right py-3 px-2">{formatCurrency(item.unit_price)}</td>
@@ -74,24 +74,26 @@ const A4Invoice = forwardRef(function A4Invoice(
         </tbody>
       </table>
 
-      {inventoryUsage.length > 0 && (
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <p className="text-xs uppercase tracking-wider text-amber-700 font-semibold mb-2">
-            Inventory Used (deducted from stock)
-          </p>
-          <ul className="text-sm grid grid-cols-2 gap-2">
-            {inventoryUsage.map((u) => (
-              <li key={u.id} className="flex justify-between">
-                <span>{u.name}</span>
-                <span>
-                  −{u.total}
-                  {u.stock_type === 'meter' ? ' m' : ' pcs'}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <div className="no-print">
+        {inventoryUsage.length > 0 && (
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <p className="text-xs uppercase tracking-wider text-amber-700 font-semibold mb-2">
+              Inventory Used (deducted from stock)
+            </p>
+            <ul className="text-sm grid grid-cols-2 gap-2">
+              {inventoryUsage.map((u) => (
+                <li key={u.id} className="flex justify-between">
+                  <span>{u.name}</span>
+                  <span>
+                    −{u.total}
+                    {u.stock_type === 'meter' ? ' m' : ' pcs'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
 
       <div className="flex justify-end">
         <div className="w-64 space-y-2 text-sm">

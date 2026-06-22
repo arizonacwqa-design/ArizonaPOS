@@ -73,7 +73,7 @@ const ThermalInvoice = forwardRef(function ThermalInvoice(
         </thead>
         <tbody>
           {items?.map((item) => (
-            <tr key={item.id}>
+            <tr key={item.id} className={!item.service_id ? 'no-print' : ''}>
               <td className="py-1 pr-1 align-top">{item.service_name}</td>
               <td className="text-center py-1 align-top">{item.quantity}</td>
               <td className="text-right py-1 align-top">
@@ -84,23 +84,25 @@ const ThermalInvoice = forwardRef(function ThermalInvoice(
         </tbody>
       </table>
 
-      {inventoryUsage.length > 0 && (
-        <>
-          <hr className="border-dashed border-black my-2" />
-          <p className="font-bold text-[10px] mb-1">Inventory Used</p>
-          <ul className="text-[10px] space-y-0.5">
-            {inventoryUsage.map((u) => (
-              <li key={u.id} className="flex justify-between">
-                <span>{u.name}</span>
-                <span>
-                  −{u.total}
-                  {u.stock_type === 'meter' ? 'm' : ' pcs'}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+      <div className="no-print">
+        {inventoryUsage.length > 0 && (
+          <>
+            <hr className="border-dashed border-black my-2" />
+            <p className="font-bold text-[10px] mb-1">Inventory Used</p>
+            <ul className="text-[10px] space-y-0.5">
+              {inventoryUsage.map((u) => (
+                <li key={u.id} className="flex justify-between">
+                  <span>{u.name}</span>
+                  <span>
+                    −{u.total}
+                    {u.stock_type === 'meter' ? 'm' : ' pcs'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
 
       <hr className="border-dashed border-black my-2" />
 

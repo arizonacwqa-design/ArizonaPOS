@@ -224,4 +224,8 @@
     page-break-after: avoid;
     page-break-before: avoid;
   }
+
+  .no-print {
+    display: none !important;
+  }
 }
