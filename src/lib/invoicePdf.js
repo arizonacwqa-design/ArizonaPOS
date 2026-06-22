@@ -142,62 +142,6 @@ async function renderA4Pdf(sale, items) {
   }
   y += 6;
 
-  // ---------- Items table ----------
-  const tableLeft = margin;
-  const colDescW = innerW * 0.55;
-  const colQtyX = tableLeft + colDescW + innerW * 0.07;
-  const colUnitX = tableLeft + colDescW + innerW * 0.22;
-  const colAmtX = pageW - margin;
-  const headerH = 8;
-
-  // Header background
-  doc.setFillColor(...AMBER_BG);
-  doc.rect(tableLeft, y, innerW, headerH, 'F');
-  doc.setDrawColor(...AMBER_BORDER);
-  doc.setLineWidth(0.3);
-  doc.line(tableLeft, y, pageW - margin, y);
-  doc.line(tableLeft, y + headerH, pageW - margin, y + headerH);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(...TEXT);
-  doc.text('Description', tableLeft + 2, y + 5.5);
-  doc.text('Qty', colQtyX, y + 5.5, { align: 'center' });
-  doc.text('Unit', colUnitX, y + 5.5, { align: 'right' });
-  doc.text('Amount', colAmtX, y + 5.5, { align: 'right' });
-
-  y += headerH + 2;
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(...TEXT);
-
-  items.forEach((item) => {
-    const rowH = 7;
-    const nameLines = doc.splitTextToSize(String(item.service_name || ''), colDescW - 4);
-    const linesH = nameLines.length * 5;
-    const usedH = Math.max(rowH, linesH);
-
-    // Page break guard
-    if (y + usedH + 50 > pageH) {
-      doc.addPage();
-      y = margin;
-    }
-
-    doc.text(nameLines, tableLeft + 2, y + 5);
-    doc.text(String(item.quantity), colQtyX, y + 5, { align: 'center' });
-    doc.text(formatCurrency(item.unit_price), colUnitX, y + 5, { align: 'right' });
-    const amt = Number(item.line_total) > 0 ? formatCurrency(item.line_total) : '—';
-    doc.text(amt, colAmtX, y + 5, { align: 'right' });
-
-    y += usedH;
-    // light separator
-    doc.setDrawColor(229, 231, 235); // gray-200
-    doc.setLineWidth(0.1);
-    doc.line(tableLeft, y, pageW - margin, y);
-    y += 1.5;
-  });
-
   y += 4;
 
   // ---------- Totals block (right-aligned) ----------
@@ -347,45 +291,7 @@ async function renderThermalPdf(sale, items) {
     doc.text(`Vehicle: ${[sale.car_model, sale.car_plate].filter(Boolean).join(' · ')}`, left, y);
     y += 3.5;
   }
-  y += 1;
-
-  // Items header
-  doc.setDrawColor(...AMBER_BORDER);
-  doc.setLineWidth(0.3);
-  doc.line(left, y, right, y);
-  y += 3.5;
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.text('Item', left, y);
-  doc.text('Qty', pageW - 22, y, { align: 'right' });
-  doc.text('Amount', right, y, { align: 'right' });
-  y += 2.5;
-  doc.line(left, y, right, y);
-  y += 3;
-
-  // Items
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(...TEXT);
-  items.forEach((item) => {
-    const nameLines = doc.splitTextToSize(String(item.service_name || ''), pageW - 30);
-    nameLines.forEach((line, idx) => {
-      doc.text(line, left, y);
-      if (idx === 0) {
-        doc.text(String(item.quantity), pageW - 22, y, { align: 'right' });
-        const amt = Number(item.line_total) > 0 ? formatCurrency(item.line_total) : '—';
-        doc.text(amt, right, y, { align: 'right' });
-      }
-      y += 3.5;
-    });
-  });
-  y += 1;
-
-  doc.setDrawColor(...AMBER_BORDER);
-  doc.setLineWidth(0.3);
-  doc.line(left, y, right, y);
-  y += 4;
+  y += 5;
 
   // Totals
   const drawRow = (label, value, bold = false) => {
