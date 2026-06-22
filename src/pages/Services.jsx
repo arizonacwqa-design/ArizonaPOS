@@ -22,6 +22,7 @@ export default function Services() {
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [message, setMessage] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
 
   useEffect(() => {
     load();
@@ -98,6 +99,24 @@ export default function Services() {
     await supabase.from('services').update({ is_active: false }).eq('id', id);
     load();
   }
+
+  const handleToggleActive = async (service) => {
+    const { error } = await supabase
+      .from('services')
+      .update({ is_active: !service.is_active })
+      .eq('id', service.id);
+
+    if (error) {
+      console.error('Toggle failed:', error.message);
+      return;
+    }
+
+    setServices(prev =>
+      prev.map(s =>
+        s.id === service.id ? { ...s, is_active: !s.is_active } : s
+      )
+    );
+  };
 
   if (!isAdmin) {
     return (
@@ -213,59 +232,150 @@ export default function Services() {
 
       {message && <p className="text-green-400 mb-4">{message}</p>}
 
-      <div className="card-luxury overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-luxury-muted border-b border-luxury-border">
-              <th className="text-left py-3 px-2">Service</th>
-              <th className="text-left py-3 px-2">Category</th>
-              <th className="text-right py-3 px-2">Price</th>
-              <th className="text-left py-3 px-2">Stock Link</th>
-              <th className="text-center py-3 px-2">Active</th>
-              <th className="text-right py-3 px-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {services.map((s) => (
-              <tr key={s.id} className="border-b border-luxury-border/50">
-                <td className="py-3 px-2 font-medium">{s.name}</td>
-                <td className="py-3 px-2 text-luxury-muted">{s.category}</td>
-                <td className="py-3 px-2 text-right text-gold-400">
-                  {formatCurrency(s.price)}
-                </td>
-                <td className="py-3 px-2 text-luxury-muted text-xs">
-                  {s.inventory_item
-                    ? `${s.inventory_item.name} (−${s.consumption_per_unit}/qty)`
-                    : '—'}
-                </td>
-                <td className="py-3 px-2 text-center">
-                  {s.is_active ? (
-                    <span className="text-green-400">Yes</span>
-                  ) : (
-                    <span className="text-gray-500">No</span>
-                  )}
-                </td>
-                <td className="py-3 px-2 text-right">
-                  <button
-                    type="button"
-                    onClick={() => openEdit(s)}
-                    className="text-gold-400 hover:text-gold-300 p-1 inline-flex"
-                  >
-                    <Pencil size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(s.id)}
-                    className="text-red-400 hover:text-red-300 p-1 inline-flex ml-1"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {(() => {
+        const activeServices = services.filter(s => s.is_active);
+        const inactiveServices = services.filter(s => !s.is_active);
+
+        return (
+          <>
+            <div className="card-luxury overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-luxury-muted border-b border-luxury-border">
+                    <th className="text-left py-3 px-2">Service</th>
+                    <th className="text-left py-3 px-2">Category</th>
+                    <th className="text-right py-3 px-2">Price</th>
+                    <th className="text-left py-3 px-2">Stock Link</th>
+                    <th className="text-center py-3 px-2">Active</th>
+                    <th className="text-right py-3 px-2">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeServices.map((s) => (
+                    <tr key={s.id} className="border-b border-luxury-border/50">
+                      <td className="py-3 px-2 font-medium">{s.name}</td>
+                      <td className="py-3 px-2 text-luxury-muted">{s.category}</td>
+                      <td className="py-3 px-2 text-right text-gold-400">
+                        {formatCurrency(s.price)}
+                      </td>
+                      <td className="py-3 px-2 text-luxury-muted text-xs">
+                        {s.inventory_item
+                          ? `${s.inventory_item.name} (−${s.consumption_per_unit}/qty)`
+                          : '—'}
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        {s.is_active ? (
+                          <span className="text-green-400">Yes</span>
+                        ) : (
+                          <span className="text-gray-500">No</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleActive(s)}
+                          className={`text-xs px-2 py-1 rounded mr-1 ${
+                            s.is_active
+                              ? 'bg-green-700 text-white'
+                              : 'bg-gray-600 text-white'
+                          }`}
+                        >
+                          {s.is_active ? 'Active' : 'Inactive'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openEdit(s)}
+                          className="text-gold-400 hover:text-gold-300 p-1 inline-flex"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(s.id)}
+                          className="text-red-400 hover:text-red-300 p-1 inline-flex ml-1"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {inactiveServices.length > 0 && (
+              <div className="mt-6">
+                <button
+                  onClick={() => setShowInactive(!showInactive)}
+                  className="text-yellow-400 text-sm mb-2 underline"
+                >
+                  {showInactive ? 'Hide Inactive Services' : 'Show Inactive Services'}
+                  ({inactiveServices.length})
+                </button>
+
+                {showInactive && (
+                  <div className="card-luxury overflow-x-auto opacity-60">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-luxury-muted border-b border-luxury-border">
+                          <th className="text-left py-3 px-2">Service</th>
+                          <th className="text-left py-3 px-2">Category</th>
+                          <th className="text-right py-3 px-2">Price</th>
+                          <th className="text-left py-3 px-2">Stock Link</th>
+                          <th className="text-center py-3 px-2">Active</th>
+                          <th className="text-right py-3 px-2">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {inactiveServices.map((s) => (
+                          <tr key={s.id} className="border-b border-luxury-border/50">
+                            <td className="py-3 px-2 font-medium">{s.name}</td>
+                            <td className="py-3 px-2 text-luxury-muted">{s.category}</td>
+                            <td className="py-3 px-2 text-right text-gold-400">
+                              {formatCurrency(s.price)}
+                            </td>
+                            <td className="py-3 px-2 text-luxury-muted text-xs">
+                              {s.inventory_item
+                                ? `${s.inventory_item.name} (−${s.consumption_per_unit}/qty)`
+                                : '—'}
+                            </td>
+                            <td className="py-3 px-2 text-center">
+                              <span className="text-gray-500">No</span>
+                            </td>
+                            <td className="py-3 px-2 text-right">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleActive(s)}
+                                className="bg-gray-600 text-white text-xs px-2 py-1 rounded mr-1"
+                              >
+                                Inactive
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openEdit(s)}
+                                className="text-gold-400 hover:text-gold-300 p-1 inline-flex"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(s.id)}
+                                className="text-red-400 hover:text-red-300 p-1 inline-flex ml-1"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 }
