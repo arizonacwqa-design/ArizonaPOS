@@ -63,47 +63,6 @@ const ThermalInvoice = forwardRef(function ThermalInvoice(
 
       <hr className="border-dashed border-black my-2" />
 
-      <table className="w-full text-[10px]">
-        <thead>
-          <tr className="border-b border-black">
-            <th className="text-left py-1">Service / Item</th>
-            <th className="text-center py-1">Qty</th>
-            <th className="text-right py-1">Amt</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items?.map((item) => (
-            <tr key={item.id}>
-              <td className="py-1 pr-1 align-top">{item.service_name}</td>
-              <td className="text-center py-1 align-top">{item.quantity}</td>
-              <td className="text-right py-1 align-top">
-                {Number(item.line_total) > 0 ? formatCurrency(item.line_total) : '—'}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {inventoryUsage.length > 0 && (
-        <>
-          <hr className="border-dashed border-black my-2" />
-          <p className="font-bold text-[10px] mb-1">Inventory Used</p>
-          <ul className="text-[10px] space-y-0.5">
-            {inventoryUsage.map((u) => (
-              <li key={u.id} className="flex justify-between">
-                <span>{u.name}</span>
-                <span>
-                  −{u.total}
-                  {u.stock_type === 'meter' ? 'm' : ' pcs'}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      <hr className="border-dashed border-black my-2" />
-
       <div className="space-y-0.5 text-[11px]">
         <div className="flex justify-between">
           <span>Subtotal</span>
