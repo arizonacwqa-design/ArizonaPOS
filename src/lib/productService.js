@@ -5,7 +5,7 @@ export async function getProductByBarcode(barcode) {
 
   const { data, error } = await supabase
     .from('inventory_items')
-    .select('id, name, category, stock_type, current_stock, unit_label, barcode, selling_price')
+    .select('id, name, category, stock_type, current_stock, unit_label, barcode')
     .eq('barcode', barcode.trim())
     .maybeSingle();
 

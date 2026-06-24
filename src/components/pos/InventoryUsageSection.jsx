@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Ruler, Boxes, Search, CheckCircle } from 'lucide-react';
+import { Ruler, Boxes, Search, CheckCircle, X } from 'lucide-react';
 import { formatStock } from '@/lib/format';
 import { groupInventoryByType } from '@/lib/pos';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
@@ -8,11 +8,16 @@ import { getProductByBarcode } from '@/lib/productService';
 export default function InventoryUsageSection({ inventory, onAdd, selectedIds = [] }) {
   const [search, setSearch] = useState('');
   const [scanMsg, setScanMsg] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
 
-  const filtered = search.trim()
-    ? inventory.filter((i) => i.name.toLowerCase().includes(search.trim().toLowerCase()))
-    : inventory;
-  const { meter, quantity } = groupInventoryByType(filtered);
+  const dropdownItems = search.trim()
+    ? inventory.filter((i) =>
+        i.name.toLowerCase().includes(search.trim().toLowerCase()) ||
+        (i.barcode && i.barcode.includes(search.trim()))
+      )
+    : [];
+
+  const { meter, quantity } = groupInventoryByType(inventory);
 
   useBarcodeScanner(async (barcode) => {
     const product = await getProductByBarcode(barcode);
@@ -30,6 +35,7 @@ export default function InventoryUsageSection({ inventory, onAdd, selectedIds = 
     onAdd(item);
     setSearch('');
     setScanMsg('');
+    setShowDropdown(false);
   }
 
   return (
@@ -37,11 +43,40 @@ export default function InventoryUsageSection({ inventory, onAdd, selectedIds = 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-luxury-muted" size={16} />
         <input
-          className="input-luxury pl-9 py-2 text-sm"
-          placeholder="Search by name or scan barcode..."
+          className="input-luxury pl-9 pr-8 py-2 text-sm"
+          placeholder="Search by name or barcode..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setShowDropdown(true); }}
+          onFocus={() => setShowDropdown(true)}
+          onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
         />
+        {search && (
+          <button
+            type="button"
+            onClick={() => { setSearch(''); setShowDropdown(false); setScanMsg(''); }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-luxury-muted hover:text-gold-300"
+          >
+            <X size={16} />
+          </button>
+        )}
+        {showDropdown && dropdownItems.length > 0 && (
+          <div className="absolute z-10 mt-1 w-full rounded-xl border border-luxury-border bg-luxury-charcoal shadow-lg max-h-60 overflow-y-auto">
+            {dropdownItems.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onMouseDown={() => handleAdd(item)}
+                className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-gold-600/15 hover:text-gold-300 border-b border-luxury-border/50 last:border-b-0 flex items-center justify-between"
+              >
+                <div>
+                  <span className="font-medium">{item.name}</span>
+                  <span className="text-luxury-muted ml-2 text-xs">{item.barcode ? `[${item.barcode}]` : ''}</span>
+                </div>
+                <span className="text-gold-400 text-xs">{formatStock(item)}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {scanMsg && (

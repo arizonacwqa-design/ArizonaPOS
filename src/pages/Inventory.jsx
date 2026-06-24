@@ -18,13 +18,16 @@ export default function Inventory() {
   const [loadError, setLoadError] = useState('');
   const [searchText, setSearchText] = useState('');
   const [highlightedId, setHighlightedId] = useState(null);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   useBarcodeScanner(async (barcode) => {
     const product = await getProductByBarcode(barcode);
     if (product) {
       setHighlightedId(product.id);
-      setSearchText(product.name);
       setTimeout(() => setHighlightedId(null), 3000);
+    } else {
+      setMessage(`No product found with barcode: ${barcode}`);
+      setTimeout(() => setMessage(''), 3000);
     }
   });
 
@@ -72,9 +75,12 @@ export default function Inventory() {
       : filter === 'low'
         ? items.filter(isLowStock)
         : items.filter((i) => i.stock_type === filter);
-  const searched = searchText.trim()
-    ? filtered.filter((i) => i.name.toLowerCase().includes(searchText.trim().toLowerCase()))
-    : filtered;
+  const dropdownItems = searchText.trim()
+    ? items.filter((i) =>
+        i.name.toLowerCase().includes(searchText.trim().toLowerCase()) ||
+        (i.barcode && i.barcode.includes(searchText.trim()))
+      )
+    : [];
 
   const meterItems = items.filter((i) => i.stock_type === 'meter');
   const qtyItems = items.filter((i) => i.stock_type === 'quantity');
@@ -143,32 +149,43 @@ export default function Inventory() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-luxury-muted" size={18} />
         <input
           className="input-luxury pl-10 pr-10"
-          placeholder="Search by name or scan barcode..."
+          placeholder="Search by name or barcode..."
           value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          onKeyDown={async (e) => {
-            if (e.key === 'Enter') {
-              const q = searchText.trim();
-              if (!q) return;
-              const match = items.find((i) => i.name.toLowerCase() === q.toLowerCase());
-              if (match) return;
-              const product = await getProductByBarcode(q);
-              if (product) {
-                setHighlightedId(product.id);
-                setSearchText(product.name);
-                setTimeout(() => setHighlightedId(null), 3000);
-              }
-            }
-          }}
+          onChange={(e) => { setSearchText(e.target.value); setShowDropdown(true); }}
+          onFocus={() => setShowDropdown(true)}
+          onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
         />
         {searchText && (
           <button
             type="button"
-            onClick={() => { setSearchText(''); setHighlightedId(null); }}
+            onClick={() => { setSearchText(''); setShowDropdown(false); setHighlightedId(null); }}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-luxury-muted hover:text-gold-300"
           >
             <X size={18} />
           </button>
+        )}
+        {showDropdown && dropdownItems.length > 0 && (
+          <div className="absolute z-10 mt-1 w-full rounded-xl border border-luxury-border bg-luxury-charcoal shadow-lg max-h-60 overflow-y-auto">
+            {dropdownItems.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onMouseDown={() => {
+                  setHighlightedId(item.id);
+                  setSearchText('');
+                  setShowDropdown(false);
+                  setTimeout(() => setHighlightedId(null), 3000);
+                }}
+                className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-gold-600/15 hover:text-gold-300 border-b border-luxury-border/50 last:border-b-0 flex items-center justify-between"
+              >
+                <div>
+                  <span className="font-medium">{item.name}</span>
+                  <span className="text-luxury-muted ml-2 text-xs">{item.barcode ? `[${item.barcode}]` : ''}</span>
+                </div>
+                <span className="text-gold-400 text-xs">{formatStock(item)}</span>
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
@@ -209,7 +226,7 @@ export default function Inventory() {
                   Loading inventory…
                 </td>
               </tr>
-            ) : searched.length === 0 ? (
+            ) : filtered.length === 0 ? (
               <tr>
                 <td colSpan={isAdmin ? 7 : 6} className="py-8 text-center text-luxury-muted">
                   {items.length === 0
@@ -218,7 +235,7 @@ export default function Inventory() {
                 </td>
               </tr>
             ) : (
-              searched.map((item) => (
+              filtered.map((item) => (
                 <tr key={item.id} className={`border-b border-luxury-border/50 ${item.id === highlightedId ? 'bg-gold-600/20 border-gold-500' : ''}`}>
                   <td className="py-3 px-2 font-medium">{item.name ?? '—'}</td>
                   <td className="py-3 px-2 text-luxury-muted">{item.category ?? '—'}</td>

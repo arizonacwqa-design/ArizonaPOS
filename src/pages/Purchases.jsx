@@ -85,7 +85,10 @@ export default function Purchases() {
       : Number(form.quantity_added) || 0;
   const estimatedTotal = qtyAdded * (Number(form.unit_cost) || 0);
   const filteredItems = searchText.trim()
-    ? items.filter((i) => i.name.toLowerCase().includes(searchText.trim().toLowerCase()))
+    ? items.filter((i) =>
+        i.name.toLowerCase().includes(searchText.trim().toLowerCase()) ||
+        (i.barcode && i.barcode.includes(searchText.trim()))
+      )
     : [];
 
   async function handleSubmit(e) {
