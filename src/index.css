@@ -228,4 +228,21 @@
   .no-print {
     display: none !important;
   }
+
+  body.printing-purchase-report * {
+    visibility: hidden;
+  }
+  body.printing-purchase-report [data-print-area="purchase-report"],
+  body.printing-purchase-report [data-print-area="purchase-report"] * {
+    visibility: visible;
+  }
+  body.printing-purchase-report [data-print-area="purchase-report"] {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    color: #000 !important;
+    background: #fff !important;
+    padding: 16px;
+  }
 }

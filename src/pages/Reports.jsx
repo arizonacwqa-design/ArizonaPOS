@@ -25,6 +25,7 @@ const TABS = [
   { id: 'topservices', label: 'Top Services' },
   { id: 'invusage', label: 'Inventory Usage' },
   { id: 'employees', label: 'Employee Sales' },
+  { id: 'purchases', label: 'Purchase Reports' },
 ];
 
 export default function Reports() {
@@ -45,6 +46,9 @@ export default function Reports() {
   const [reprintItems, setReprintItems] = useState([]);
   const [reprintLoading, setReprintLoading] = useState(false);
   const [reprintError, setReprintError] = useState('');
+  const [fromDate, setFromDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [toDate, setToDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [purchaseView, setPurchaseView] = useState('daily');
 
   async function openReprint(sale) {
     setReprintSale(sale);
@@ -81,6 +85,12 @@ export default function Reports() {
     setTimeout(() => {
       document.body.classList.remove('print-thermal', 'print-a4');
     }, 500);
+  }
+
+  function printPurchaseReport() {
+    document.body.classList.add('printing-purchase-report');
+    window.print();
+    setTimeout(() => document.body.classList.remove('printing-purchase-report'), 500);
   }
 
   const reprintInventoryUsage = useMemo(() => {
@@ -196,6 +206,25 @@ export default function Reports() {
     const total = empSales.reduce((sum, s) => sum + Number(s.total_amount), 0);
     return { ...emp, count: empSales.length, total };
   });
+
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const dailyPurchases = purchases.filter(p => p.purchase_date === today);
+  const purchasesDailyTotal = dailyPurchases.reduce((s, p) => s + Number(p.total_cost || 0), 0);
+
+  const monthlyGroupedPurchases = useMemo(() => {
+    const groups = {};
+    for (const p of purchases) {
+      const month = p.purchase_date ? p.purchase_date.substring(0, 7) : 'unknown';
+      if (!groups[month]) groups[month] = { month, total: 0, count: 0 };
+      groups[month].total += Number(p.total_cost || 0);
+      groups[month].count += 1;
+    }
+    return Object.values(groups).sort((a, b) => b.month.localeCompare(a.month));
+  }, [purchases]);
+  const monthlyGroupedTotal = monthlyGroupedPurchases.reduce((s, g) => s + g.total, 0);
+
+  const rangePurchases = purchases.filter(p => p.purchase_date >= fromDate && p.purchase_date <= toDate);
+  const rangeTotal = rangePurchases.reduce((s, p) => s + Number(p.total_cost || 0), 0);
 
   const lowStock = inventory.filter(isLowStock);
   const dailyExportRows = buildSalesExportRows(dailySales);
@@ -623,6 +652,180 @@ export default function Reports() {
           <ThermalInvoice sale={reprintSale} items={reprintItems} inventoryUsage={reprintInventoryUsage} />
           <A4Invoice sale={reprintSale} items={reprintItems} inventoryUsage={reprintInventoryUsage} />
         </>
+      )}
+
+      {tab === 'purchases' && (
+        <div className="space-y-4" data-print-area="purchase-report">
+          <div className="flex flex-wrap gap-2">
+            {['daily', 'monthly', 'range'].map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setPurchaseView(v)}
+                className={`px-4 py-2 rounded-lg text-sm capitalize ${
+                  purchaseView === v
+                    ? 'bg-gold-600/20 text-gold-400 border border-gold-600/30'
+                    : 'bg-luxury-slate text-gray-400'
+                }`}
+              >
+                {v === 'daily' ? 'Daily' : v === 'monthly' ? 'Monthly' : 'Date Range'}
+              </button>
+            ))}
+          </div>
+
+          {purchaseView === 'daily' && (
+            <>
+              <div className="card-luxury flex items-center justify-between">
+                <div>
+                  <p className="text-3xl font-bold text-gold-400">{formatCurrency(purchasesDailyTotal)}</p>
+                  <p className="text-luxury-muted text-sm">{dailyPurchases.length} purchases today</p>
+                </div>
+                <button type="button" onClick={printPurchaseReport} className="btn-outline flex items-center gap-2 text-sm">
+                  <Printer size={16} /> Print
+                </button>
+              </div>
+              <div className="card-luxury overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-luxury-muted border-b border-luxury-border">
+                      <th className="text-left py-3 px-2">Item</th>
+                      <th className="text-left py-3 px-2">Supplier</th>
+                      <th className="text-right py-3 px-2">Qty Added</th>
+                      <th className="text-right py-3 px-2">Unit Cost</th>
+                      <th className="text-right py-3 px-2">Total Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dailyPurchases.map((p) => (
+                      <tr key={p.id} className="border-b border-luxury-border/50">
+                        <td className="py-3 px-2">{p.inventory_items?.name || '—'}</td>
+                        <td className="py-3 px-2">{p.supplier_name}</td>
+                        <td className="py-3 px-2 text-right">
+                          {p.meters_added > 0 ? `${p.meters_added}m` : `${p.quantity_added} pcs`}
+                        </td>
+                        <td className="py-3 px-2 text-right">{formatCurrency(p.unit_cost)}</td>
+                        <td className="py-3 px-2 text-right text-gold-400">{formatCurrency(p.total_cost)}</td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 border-gold-500/30 font-semibold">
+                      <td colSpan={4} className="py-3 px-2 text-right text-gold-400">Grand Total</td>
+                      <td className="py-3 px-2 text-right text-gold-400">{formatCurrency(purchasesDailyTotal)}</td>
+                    </tr>
+                    {dailyPurchases.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-luxury-muted">No purchases today</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {purchaseView === 'monthly' && (
+            <>
+              <div className="card-luxury flex items-center justify-between">
+                <div>
+                  <p className="text-3xl font-bold text-gold-400">{formatCurrency(monthlyGroupedTotal)}</p>
+                  <p className="text-luxury-muted text-sm">{monthlyGroupedPurchases.length} months with purchases</p>
+                </div>
+                <button type="button" onClick={printPurchaseReport} className="btn-outline flex items-center gap-2 text-sm">
+                  <Printer size={16} /> Print
+                </button>
+              </div>
+              <div className="card-luxury overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-luxury-muted border-b border-luxury-border">
+                      <th className="text-left py-3 px-2">Month</th>
+                      <th className="text-right py-3 px-2">Purchases</th>
+                      <th className="text-right py-3 px-2">Total Spend</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {monthlyGroupedPurchases.map((g) => (
+                      <tr key={g.month} className="border-b border-luxury-border/50">
+                        <td className="py-3 px-2">{g.month}</td>
+                        <td className="py-3 px-2 text-right">{g.count}</td>
+                        <td className="py-3 px-2 text-right text-gold-400">{formatCurrency(g.total)}</td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 border-gold-500/30 font-semibold">
+                      <td colSpan={2} className="py-3 px-2 text-right text-gold-400">Grand Total</td>
+                      <td className="py-3 px-2 text-right text-gold-400">{formatCurrency(monthlyGroupedTotal)}</td>
+                    </tr>
+                    {monthlyGroupedPurchases.length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="py-8 text-center text-luxury-muted">No purchase data</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {purchaseView === 'range' && (
+            <>
+              <div className="flex flex-wrap gap-3">
+                <div>
+                  <label className="label-luxury block mb-1">From</label>
+                  <input type="date" className="input-luxury" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label-luxury block mb-1">To</label>
+                  <input type="date" className="input-luxury" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                </div>
+              </div>
+              <div className="card-luxury flex items-center justify-between">
+                <div>
+                  <p className="text-3xl font-bold text-gold-400">{formatCurrency(rangeTotal)}</p>
+                  <p className="text-luxury-muted text-sm">{rangePurchases.length} purchases in range</p>
+                </div>
+                <button type="button" onClick={printPurchaseReport} className="btn-outline flex items-center gap-2 text-sm">
+                  <Printer size={16} /> Print
+                </button>
+              </div>
+              <div className="card-luxury overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-luxury-muted border-b border-luxury-border">
+                      <th className="text-left py-3 px-2">Date</th>
+                      <th className="text-left py-3 px-2">Item</th>
+                      <th className="text-left py-3 px-2">Supplier</th>
+                      <th className="text-right py-3 px-2">Qty</th>
+                      <th className="text-right py-3 px-2">Unit Cost</th>
+                      <th className="text-right py-3 px-2">Total Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rangePurchases.map((p) => (
+                      <tr key={p.id} className="border-b border-luxury-border/50">
+                        <td className="py-3 px-2">{formatDate(p.purchase_date)}</td>
+                        <td className="py-3 px-2">{p.inventory_items?.name || '—'}</td>
+                        <td className="py-3 px-2">{p.supplier_name}</td>
+                        <td className="py-3 px-2 text-right">
+                          {p.meters_added > 0 ? `${p.meters_added}m` : `${p.quantity_added} pcs`}
+                        </td>
+                        <td className="py-3 px-2 text-right">{formatCurrency(p.unit_cost)}</td>
+                        <td className="py-3 px-2 text-right text-gold-400">{formatCurrency(p.total_cost)}</td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 border-gold-500/30 font-semibold">
+                      <td colSpan={5} className="py-3 px-2 text-right text-gold-400">Grand Total</td>
+                      <td className="py-3 px-2 text-right text-gold-400">{formatCurrency(rangeTotal)}</td>
+                    </tr>
+                    {rangePurchases.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-luxury-muted">No purchases in this date range</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
       )}
 
       {tab === 'employees' && (
