@@ -51,10 +51,7 @@ function todayInputDate() {
 }
 
 function toDateInput(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  return date.toISOString().slice(0, 10);
 }
 
 function toDateTimeLocal(date = new Date()) {
@@ -113,7 +110,7 @@ export default function Bookings() {
 
     const { data, error } = await supabase
       .from('bookings')
-      .select('*, assigned_profile:profiles!bookings_assigned_to_fkey!left(full_name, role)')
+      .select('*, assigned_profile:profiles!bookings_assigned_to_fkey(full_name, role)')
       .gte('scheduled_at', from)
       .lte('scheduled_at', to)
       .order('scheduled_at');
