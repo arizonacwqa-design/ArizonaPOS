@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Plus, AlertTriangle, Pencil } from 'lucide-react';
+import { Plus, AlertTriangle, Pencil, Search, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatStock, isLowStock } from '@/lib/format';
 import InventoryAddForm from '@/components/InventoryAddForm';
+import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
+import { getProductByBarcode } from '@/lib/productService';
 
 export default function Inventory() {
   const isAdmin = useAuthStore((s) => s.isAdmin());
@@ -14,6 +16,17 @@ export default function Inventory() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [highlightedId, setHighlightedId] = useState(null);
+
+  useBarcodeScanner(async (barcode) => {
+    const product = await getProductByBarcode(barcode);
+    if (product) {
+      setHighlightedId(product.id);
+      setSearchText(product.name);
+      setTimeout(() => setHighlightedId(null), 3000);
+    }
+  });
 
   useEffect(() => {
     loadItems();
@@ -59,6 +72,9 @@ export default function Inventory() {
       : filter === 'low'
         ? items.filter(isLowStock)
         : items.filter((i) => i.stock_type === filter);
+  const searched = searchText.trim()
+    ? filtered.filter((i) => i.name.toLowerCase().includes(searchText.trim().toLowerCase()))
+    : filtered;
 
   const meterItems = items.filter((i) => i.stock_type === 'meter');
   const qtyItems = items.filter((i) => i.stock_type === 'quantity');
@@ -123,6 +139,25 @@ export default function Inventory() {
         </p>
       )}
 
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-luxury-muted" size={18} />
+        <input
+          className="input-luxury pl-10 pr-10"
+          placeholder="Search by name or scan barcode..."
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+        />
+        {searchText && (
+          <button
+            type="button"
+            onClick={() => { setSearchText(''); setHighlightedId(null); }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-luxury-muted hover:text-gold-300"
+          >
+            <X size={18} />
+          </button>
+        )}
+      </div>
+
       <div className="flex gap-2 mb-4 flex-wrap">
         {['all', 'meter', 'quantity', 'low'].map((f) => (
           <button
@@ -160,7 +195,7 @@ export default function Inventory() {
                   Loading inventory…
                 </td>
               </tr>
-            ) : filtered.length === 0 ? (
+            ) : searched.length === 0 ? (
               <tr>
                 <td colSpan={isAdmin ? 7 : 6} className="py-8 text-center text-luxury-muted">
                   {items.length === 0
@@ -169,8 +204,8 @@ export default function Inventory() {
                 </td>
               </tr>
             ) : (
-              filtered.map((item) => (
-                <tr key={item.id} className="border-b border-luxury-border/50">
+              searched.map((item) => (
+                <tr key={item.id} className={`border-b border-luxury-border/50 ${item.id === highlightedId ? 'bg-gold-600/20 border-gold-500' : ''}`}>
                   <td className="py-3 px-2 font-medium">{item.name ?? '—'}</td>
                   <td className="py-3 px-2 text-luxury-muted">{item.category ?? '—'}</td>
                   <td className="py-3 px-2 capitalize">{item.stock_type ?? '—'}</td>

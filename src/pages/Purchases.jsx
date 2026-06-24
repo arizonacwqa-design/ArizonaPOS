@@ -3,6 +3,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatCurrency, formatDate, formatStock } from '@/lib/format';
 import { startOfMonth, parseISO } from 'date-fns';
+import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
+import { getProductByBarcode } from '@/lib/productService';
 
 export default function Purchases() {
   const { user } = useAuthStore();
@@ -21,6 +23,8 @@ export default function Purchases() {
   });
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -49,12 +53,40 @@ export default function Purchases() {
     setMonthExpense(expense);
   }
 
+  useBarcodeScanner(async (barcode) => {
+    const product = await getProductByBarcode(barcode);
+    if (!product) {
+      setMessage(`Product not found for barcode: ${barcode}. Please add it first.`);
+      return;
+    }
+    const { data: lastPurchase } = await supabase
+      .from('inventory_purchases')
+      .select('unit_cost')
+      .eq('inventory_item_id', product.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const lastCost = lastPurchase?.unit_cost || 0;
+    setForm((prev) => ({
+      ...prev,
+      inventory_item_id: product.id,
+      unit_cost: lastCost,
+    }));
+    setSearchText(product.name);
+    setMessage(
+      `Scanned: ${product.name} — Stock: ${product.stock_type === 'meter' ? product.current_stock + 'm' : product.current_stock + ' ' + (product.unit_label || 'pcs')} — Last cost: ${formatCurrency(lastCost)}`
+    );
+  });
+
   const selectedItem = items.find((i) => i.id === form.inventory_item_id);
   const qtyAdded =
     selectedItem?.stock_type === 'meter'
       ? Number(form.meters_added) || 0
       : Number(form.quantity_added) || 0;
   const estimatedTotal = qtyAdded * (Number(form.unit_cost) || 0);
+  const filteredItems = searchText.trim()
+    ? items.filter((i) => i.name.toLowerCase().includes(searchText.trim().toLowerCase()))
+    : [];
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -161,20 +193,62 @@ export default function Purchases() {
             />
           </div>
           <div className="md:col-span-2">
-            <label className="label-luxury">Inventory Item *</label>
-            <select
-              className="input-luxury"
-              value={form.inventory_item_id}
-              onChange={(e) => setForm({ ...form, inventory_item_id: e.target.value })}
-              required
-            >
-              <option value="">Select item...</option>
-              {items.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name} — current: {formatStock(item)}
-                </option>
-              ))}
-            </select>
+            <label className="label-luxury">Search Item or Scan Barcode *</label>
+            <div className="relative">
+              <input
+                className="input-luxury"
+                value={searchText}
+                onChange={(e) => {
+                  setSearchText(e.target.value);
+                  setShowDropdown(true);
+                  setForm((prev) => ({ ...prev, inventory_item_id: '' }));
+                }}
+                onFocus={() => setShowDropdown(true)}
+                onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                placeholder="Type name or scan barcode..."
+                required
+              />
+              {showDropdown && filteredItems.length > 0 && (
+                <div className="absolute z-10 mt-1 w-full rounded-xl border border-luxury-border bg-luxury-charcoal shadow-lg max-h-48 overflow-y-auto">
+                  {filteredItems.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onMouseDown={() => {
+                        setForm((prev) => ({
+                          ...prev,
+                          inventory_item_id: item.id,
+                          unit_cost: 0,
+                        }));
+                        setSearchText(item.name);
+                        setShowDropdown(false);
+                        supabase
+                          .from('inventory_purchases')
+                          .select('unit_cost')
+                          .eq('inventory_item_id', item.id)
+                          .order('created_at', { ascending: false })
+                          .limit(1)
+                          .maybeSingle()
+                          .then(({ data }) => {
+                            if (data?.unit_cost) {
+                              setForm((prev) => ({ ...prev, unit_cost: data.unit_cost }));
+                            }
+                          });
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-gold-600/15 hover:text-gold-300 border-b border-luxury-border/50 last:border-b-0"
+                    >
+                      <span className="font-medium">{item.name}</span>
+                      <span className="text-luxury-muted ml-2 text-xs">{formatStock(item)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {selectedItem && (
+              <p className="mt-1.5 text-xs text-amber-300">
+                Current Stock: <span className="font-semibold">{formatStock(selectedItem)}</span>
+              </p>
+            )}
           </div>
 
           {selectedItem?.stock_type === 'meter' ? (
