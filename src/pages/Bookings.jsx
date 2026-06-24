@@ -113,7 +113,7 @@ export default function Bookings() {
 
     const { data, error } = await supabase
       .from('bookings')
-      .select('*, assigned_profile:profiles?bookings_assigned_to_fkey(full_name, role)')
+      .select('*, assigned_profile:profiles!bookings_assigned_to_fkey!left(full_name, role)')
       .gte('scheduled_at', from)
       .lte('scheduled_at', to)
       .order('scheduled_at');
