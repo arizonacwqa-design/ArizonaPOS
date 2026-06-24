@@ -146,6 +146,20 @@ export default function Inventory() {
           placeholder="Search by name or scan barcode..."
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
+          onKeyDown={async (e) => {
+            if (e.key === 'Enter') {
+              const q = searchText.trim();
+              if (!q) return;
+              const match = items.find((i) => i.name.toLowerCase() === q.toLowerCase());
+              if (match) return;
+              const product = await getProductByBarcode(q);
+              if (product) {
+                setHighlightedId(product.id);
+                setSearchText(product.name);
+                setTimeout(() => setHighlightedId(null), 3000);
+              }
+            }
+          }}
         />
         {searchText && (
           <button
