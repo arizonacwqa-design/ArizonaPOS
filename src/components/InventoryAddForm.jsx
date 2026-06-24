@@ -7,15 +7,18 @@ import {
   Ruler,
   Boxes,
   Loader2,
+  QrCode,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { METER_CATEGORIES, QUANTITY_CATEGORIES } from '@/lib/constants';
+import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 
 const emptyAddForm = {
   name: '',
   category: 'Chemicals',
   stock_type: 'quantity',
+  barcode: '',
   supplier_name: '',
   bill_number: '',
   purchase_date: new Date().toISOString().split('T')[0],
@@ -34,6 +37,7 @@ export default function InventoryAddForm({ mode = 'add', item, onSuccess, onCanc
         name: item.name ?? '',
         category: item.category ?? 'Chemicals',
         stock_type: item.stock_type ?? 'quantity',
+        barcode: item.barcode ?? '',
         current_stock: item.current_stock ?? 0,
         low_stock_threshold: item.low_stock_threshold ?? 5,
         unit_label: item.unit_label ?? 'pcs',
@@ -44,6 +48,14 @@ export default function InventoryAddForm({ mode = 'add', item, onSuccess, onCanc
 
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [scanMode, setScanMode] = useState(false);
+
+  useBarcodeScanner((barcode) => {
+    if (scanMode) {
+      setField('barcode', barcode);
+      setScanMode(false);
+    }
+  });
 
   const categories =
     form.stock_type === 'meter' ? METER_CATEGORIES : QUANTITY_CATEGORIES;
@@ -84,6 +96,7 @@ export default function InventoryAddForm({ mode = 'add', item, onSuccess, onCanc
       name: form.name.trim(),
       category: form.category,
       stock_type: form.stock_type,
+      barcode: form.barcode.trim() || null,
       current_stock: Number(form.current_stock) || 0,
       low_stock_threshold: Number(form.low_stock_threshold) || 0,
       unit_label: form.stock_type === 'meter' ? 'm' : form.unit_label || 'pcs',
@@ -116,6 +129,7 @@ export default function InventoryAddForm({ mode = 'add', item, onSuccess, onCanc
       name,
       category: form.category,
       stock_type: form.stock_type,
+      barcode: form.barcode.trim() || null,
       current_stock: stockAmount > 0 ? stockAmount : 0,
       low_stock_threshold: Number(form.low_stock_threshold) || 5,
       unit_label: form.stock_type === 'meter' ? 'm' : 'pcs',
@@ -232,6 +246,34 @@ export default function InventoryAddForm({ mode = 'add', item, onSuccess, onCanc
                 />
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Barcode */}
+        <section>
+          <SectionTitle icon={QrCode} label="Barcode" />
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Field label="Barcode" required>
+              <div className="flex gap-2">
+                <input
+                  className="input-luxury flex-1"
+                  value={form.barcode}
+                  onChange={(e) => setField('barcode', e.target.value)}
+                  placeholder="Scan or type barcode"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setScanMode(!scanMode)}
+                  className={`btn-outline px-3 ${scanMode ? 'border-gold-500 text-gold-400' : ''}`}
+                >
+                  {scanMode ? 'Scanning...' : 'Scan'}
+                </button>
+              </div>
+              {scanMode && (
+                <p className="mt-1 text-xs text-amber-400">Scanner ready — scan barcode now</p>
+              )}
+            </Field>
           </div>
         </section>
 
