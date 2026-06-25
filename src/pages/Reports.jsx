@@ -3,6 +3,7 @@ import { Printer, Download, MessageCircle, X, FileText, Search } from 'lucide-re
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatCurrency, formatDate, formatDateTime, formatStock, isLowStock } from '@/lib/format';
+import LoadingSpinner from '../LoadingSpinner';
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import ExportButtons from '@/components/ExportButtons';
 import {
@@ -276,9 +277,7 @@ export default function Reports() {
     { header: 'Cost', accessor: (r) => formatCurrency(r.total_cost) },
   ];
 
-  if (loading) {
-    return <div className="p-8 text-gold-400 animate-pulse">Loading reports...</div>;
-  }
+  if (loading) return <LoadingSpinner message="Loading reports..." />;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
@@ -878,51 +877,74 @@ export default function Reports() {
 }
 
 function SalesTable({ data, onReprint }) {
+  const [page, setPage] = useState(1);
+  const perPage = 20;
+  const total = Math.ceil(data.length / perPage) || 1;
+  const paginated = data.slice((page - 1) * perPage, page * perPage);
+
+  useEffect(() => { setPage(1); }, [data]);
+
   return (
-    <div className="card-luxury overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-luxury-muted border-b border-luxury-border">
-            <th className="text-left py-3 px-2">Invoice</th>
-            <th className="text-left py-3 px-2">Customer</th>
-            <th className="text-left py-3 px-2">Car</th>
-            <th className="text-left py-3 px-2">Payment</th>
-            <th className="text-right py-3 px-2">Total</th>
-            <th className="text-right py-3 px-2 w-32"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((s) => (
-            <tr key={s.id} className="border-b border-luxury-border/50 hover:bg-luxury-slate/40">
-              <td className="py-3 px-2">{s.invoice_number}</td>
-              <td className="py-3 px-2">{s.customer_name}</td>
-              <td className="py-3 px-2 text-luxury-muted">
-                {s.car_model} {s.car_plate && `· ${s.car_plate}`}
-              </td>
-              <td className="py-3 px-2 capitalize">{s.payment_method?.replace('_', ' ')}</td>
-              <td className="py-3 px-2 text-right text-gold-400">
-                {formatCurrency(s.total_amount)}
-              </td>
-              <td className="py-3 px-2 text-right">
-                <button
-                  type="button"
-                  onClick={() => onReprint?.(s)}
-                  className="text-gold-400 hover:text-gold-300 text-xs inline-flex items-center gap-1"
-                >
-                  <FileText size={14} /> Reprint
-                </button>
-              </td>
+    <div>
+      <div className="card-luxury overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-luxury-muted border-b border-luxury-border">
+              <th className="text-left py-3 px-2">Invoice</th>
+              <th className="text-left py-3 px-2">Customer</th>
+              <th className="text-left py-3 px-2">Car</th>
+              <th className="text-left py-3 px-2">Payment</th>
+              <th className="text-right py-3 px-2">Total</th>
+              <th className="text-right py-3 px-2 w-32"></th>
             </tr>
-          ))}
-          {data.length === 0 && (
-            <tr>
-              <td colSpan={6} className="py-8 text-center text-luxury-muted">
-                No sales for this period
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {paginated.map((s) => (
+              <tr key={s.id} className="border-b border-luxury-border/50 hover:bg-luxury-slate/40">
+                <td className="py-3 px-2">{s.invoice_number}</td>
+                <td className="py-3 px-2">{s.customer_name}</td>
+                <td className="py-3 px-2 text-luxury-muted">
+                  {s.car_model} {s.car_plate && `· ${s.car_plate}`}
+                </td>
+                <td className="py-3 px-2 capitalize">{s.payment_method?.replace('_', ' ')}</td>
+                <td className="py-3 px-2 text-right text-gold-400">
+                  {formatCurrency(s.total_amount)}
+                </td>
+                <td className="py-3 px-2 text-right">
+                  <button
+                    type="button"
+                    onClick={() => onReprint?.(s)}
+                    className="text-gold-400 hover:text-gold-300 text-xs inline-flex items-center gap-1"
+                  >
+                    <FileText size={14} /> Reprint
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {paginated.length === 0 && (
+              <tr>
+                <td colSpan={6} className="py-8 text-center text-luxury-muted">
+                  No sales for this period
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex items-center justify-between mt-4">
+        <button
+          onClick={() => setPage(p => Math.max(1, p - 1))}
+          disabled={page === 1}
+          className="px-3 py-1 bg-gray-800 text-white rounded disabled:opacity-40"
+        >Previous</button>
+        <span className="text-gray-400 text-sm">Page {page} of {total}</span>
+        <button
+          onClick={() => setPage(p => p + 1)}
+          disabled={page >= total}
+          className="px-3 py-1 bg-gray-800 text-white rounded disabled:opacity-40"
+        >Next</button>
+      </div>
     </div>
   );
 }

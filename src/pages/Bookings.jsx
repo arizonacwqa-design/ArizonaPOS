@@ -14,6 +14,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatDateTime } from '@/lib/format';
+import LoadingSpinner from '../LoadingSpinner';
 
 const STATUS_OPTIONS = [
   { value: 'booked', label: 'Booked' },
@@ -260,6 +261,8 @@ export default function Bookings() {
     (booking) => !['delivered', 'cancelled'].includes(booking.status)
   ).length;
 
+  if (loading) return <LoadingSpinner message="Loading bookings..." />;
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -501,9 +504,7 @@ export default function Bookings() {
       </div>
 
       <div className="space-y-4">
-        {loading ? (
-          <div className="card-luxury text-center text-luxury-muted">Loading bookings...</div>
-        ) : filteredBookings.length === 0 ? (
+        {filteredBookings.length === 0 ? (
           <div className="card-luxury text-center text-luxury-muted">
             No bookings for this day. Create one when a customer reserves a slot.
           </div>

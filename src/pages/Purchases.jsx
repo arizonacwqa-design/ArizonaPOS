@@ -5,6 +5,7 @@ import { formatCurrency, formatDate, formatStock } from '@/lib/format';
 import { startOfMonth, parseISO } from 'date-fns';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { getProductByBarcode } from '@/lib/productService';
+import LoadingSpinner from '../LoadingSpinner';
 
 export default function Purchases() {
   const { user } = useAuthStore();
@@ -22,6 +23,7 @@ export default function Purchases() {
     notes: '',
   });
   const [message, setMessage] = useState('');
+  const [dataLoading, setDataLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
@@ -31,6 +33,7 @@ export default function Purchases() {
   }, []);
 
   async function loadData() {
+    setDataLoading(true);
     const monthStart = startOfMonth(new Date()).toISOString().split('T')[0];
     const [itemsRes, purchasesRes] = await Promise.all([
       supabase.from('inventory_items').select('*').order('name'),
@@ -51,6 +54,7 @@ export default function Purchases() {
       })
       .reduce((sum, p) => sum + Number(p.total_cost || 0), 0);
     setMonthExpense(expense);
+    setDataLoading(false);
   }
 
   useBarcodeScanner(async (barcode) => {
@@ -150,6 +154,8 @@ export default function Purchases() {
       loadData();
     }
   }
+
+  if (dataLoading) return <LoadingSpinner message="Loading purchases..." />;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">

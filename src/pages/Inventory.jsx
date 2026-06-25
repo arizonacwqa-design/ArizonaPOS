@@ -6,6 +6,7 @@ import { formatStock, isLowStock } from '@/lib/format';
 import InventoryAddForm from '@/components/InventoryAddForm';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { getProductByBarcode } from '@/lib/productService';
+import LoadingSpinner from '../LoadingSpinner';
 
 export default function Inventory() {
   const isAdmin = useAuthStore((s) => s.isAdmin());
@@ -19,6 +20,7 @@ export default function Inventory() {
   const [searchText, setSearchText] = useState('');
   const [highlightedId, setHighlightedId] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useBarcodeScanner(async (barcode) => {
     const product = await getProductByBarcode(barcode);
@@ -34,6 +36,10 @@ export default function Inventory() {
   useEffect(() => {
     loadItems();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter]);
 
   async function loadItems() {
     setLoading(true);
@@ -82,8 +88,13 @@ export default function Inventory() {
       )
     : [];
 
+  const paginated = filtered.slice((currentPage - 1) * 20, currentPage * 20);
+  const totalPages = Math.ceil(filtered.length / 20) || 1;
+
   const meterItems = items.filter((i) => i.stock_type === 'meter');
   const qtyItems = items.filter((i) => i.stock_type === 'quantity');
+
+  if (loading) return <LoadingSpinner message="Loading inventory..." />;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
@@ -220,13 +231,7 @@ export default function Inventory() {
             </tr>
           </thead>
           <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={isAdmin ? 7 : 6} className="py-8 text-center text-luxury-muted">
-                  Loading inventory…
-                </td>
-              </tr>
-            ) : filtered.length === 0 ? (
+            {filtered.length === 0 ? (
               <tr>
                 <td colSpan={isAdmin ? 7 : 6} className="py-8 text-center text-luxury-muted">
                   {items.length === 0
@@ -235,7 +240,7 @@ export default function Inventory() {
                 </td>
               </tr>
             ) : (
-              filtered.map((item) => (
+              paginated.map((item) => (
                 <tr key={item.id} className={`border-b border-luxury-border/50 ${item.id === highlightedId ? 'bg-gold-600/20 border-gold-500' : ''}`}>
                   <td className="py-3 px-2 font-medium">{item.name ?? '—'}</td>
                   <td className="py-3 px-2 text-luxury-muted">{item.category ?? '—'}</td>
@@ -270,6 +275,20 @@ export default function Inventory() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="flex items-center justify-between mt-4">
+        <button
+          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+          disabled={currentPage === 1}
+          className="px-3 py-1 bg-gray-800 text-white rounded disabled:opacity-40"
+        >Previous</button>
+        <span className="text-gray-400 text-sm">Page {currentPage} of {totalPages}</span>
+        <button
+          onClick={() => setCurrentPage(p => p + 1)}
+          disabled={currentPage >= totalPages}
+          className="px-3 py-1 bg-gray-800 text-white rounded disabled:opacity-40"
+        >Next</button>
       </div>
     </div>
   );

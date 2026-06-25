@@ -63,6 +63,8 @@ CREATE TABLE IF NOT EXISTS inventory_items (
   current_stock NUMERIC(12, 2) NOT NULL DEFAULT 0,
   low_stock_threshold NUMERIC(12, 2) NOT NULL DEFAULT 5,
   unit_label TEXT NOT NULL DEFAULT 'pcs',
+  barcode TEXT,
+  selling_price NUMERIC(10, 2),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

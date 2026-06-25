@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { getCustomerHistory, updateCustomer } from '@/lib/customers';
 import LuxuryTable from '@/components/LuxuryTable';
-import { PageHeaderSkeleton, TableSkeleton } from '@/components/LoadingSkeleton';
+import LoadingSpinner from '../LoadingSpinner';
 
 export default function Customers() {
   const [customers, setCustomers] = useState([]);
@@ -96,14 +96,7 @@ export default function Customers() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="p-8">
-        <PageHeaderSkeleton />
-        <TableSkeleton />
-      </div>
-    );
-  }
+  if (loading) return <LoadingSpinner message="Loading customers..." />;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
