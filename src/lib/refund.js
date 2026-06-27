@@ -6,7 +6,7 @@ export async function processRefund(saleId, reason, userId, items = null) {
       p_sale_id: saleId,
       p_reason: reason,
       p_refunded_by: userId,
-      p_items: JSON.stringify(items),
+      p_items: items,
     });
     if (error) throw error;
     return data;
@@ -30,12 +30,22 @@ export async function processRefund(saleId, reason, userId, items = null) {
   return processRefund(saleId, reason, userId, allItems);
 }
 
-export async function getRefundLog(limit = 50) {
+export async function getRefundLog(limit = 200) {
   const { data, error } = await supabase
     .from('refund_log')
-    .select('*, items_refunded, sales!inner(invoice_number, customer_name, total_amount, refunded_amount), profiles!inner(full_name)')
+    .select('*, items_refunded, sale_id, sales!inner(invoice_number, customer_name, total_amount, refunded_amount, sale_date, created_at, payment_method, customer_phone, car_model, car_plate, discount, subtotal), profiles!inner(full_name)')
     .order('refunded_at', { ascending: false })
     .limit(limit);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getRefundSaleItems(saleId) {
+  const { data, error } = await supabase
+    .from('sale_items')
+    .select('id, service_name, quantity, unit_price, line_total, inventory_deducted')
+    .eq('sale_id', saleId)
+    .order('id');
   if (error) throw error;
   return data || [];
 }

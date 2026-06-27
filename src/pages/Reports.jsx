@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Printer, Download, MessageCircle, X, FileText, Search, RotateCcw } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase, companyInfo } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatCurrency, formatDate, formatDateTime, formatStock, isLowStock } from '@/lib/format';
 import LoadingSpinner from '../LoadingSpinner';
@@ -13,7 +13,8 @@ import {
 import ThermalInvoice from '@/components/ThermalInvoice';
 import A4Invoice from '@/components/A4Invoice';
 import { downloadLuxuryInvoicePdf } from '@/lib/invoicePdf';
-import { buildInvoiceWhatsAppMessage, openWhatsApp } from '@/lib/share';
+import { buildInvoiceWhatsAppMessage, buildRefundWhatsAppMessage, openWhatsApp } from '@/lib/share';
+import { downloadRefundPdf } from '@/lib/refundPdf';
 import RefundDialog from '@/components/RefundDialog';
 import { getRefundLog } from '@/lib/refund';
 
@@ -59,6 +60,7 @@ export default function Reports() {
   const [refundView, setRefundView] = useState('daily');
   const [selectedRefundDate, setSelectedRefundDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedRefundMonth, setSelectedRefundMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [refundPrintLog, setRefundPrintLog] = useState(null);
 
   async function openReprint(sale) {
     setReprintSale(sale);
@@ -954,7 +956,7 @@ export default function Reports() {
                 <p className="text-3xl font-bold text-red-400">{formatCurrency(dailyRefundTotal)}</p>
                 <p className="text-luxury-muted">{dailyRefunds.length} refunds</p>
               </div>
-              <RefundTable data={dailyRefunds} loading={refundLogLoading} />
+              <RefundTable data={dailyRefunds} loading={refundLogLoading} onPrint={setRefundPrintLog} />
             </div>
           )}
 
@@ -970,7 +972,7 @@ export default function Reports() {
                 <p className="text-2xl font-bold text-red-400">{formatCurrency(monthlyRefundTotal)}</p>
                 <p className="text-luxury-muted">{monthlyRefunds.length} refunds</p>
               </div>
-              <RefundTable data={monthlyRefunds} loading={refundLogLoading} />
+              <RefundTable data={monthlyRefunds} loading={refundLogLoading} onPrint={setRefundPrintLog} />
             </div>
           )}
 
@@ -980,7 +982,7 @@ export default function Reports() {
               <p className="text-3xl font-bold text-gold-400">{refundLog.length} total</p>
             </div>
           )}
-          {refundView === 'all' && <RefundTable data={refundLog} loading={refundLogLoading} />}
+          {refundView === 'all' && <RefundTable data={refundLog} loading={refundLogLoading} onPrint={setRefundPrintLog} />}
         </div>
       )}
 
@@ -988,6 +990,10 @@ export default function Reports() {
         sale={refundDialogSale}
         onClose={() => setRefundDialogSale(null)}
         onRefunded={handleRefundSuccess}
+      />
+      <RefundPrintModal
+        group={refundPrintLog}
+        onClose={() => setRefundPrintLog(null)}
       />
     </div>
   );
@@ -1066,7 +1072,32 @@ function SalesTable({ data, onReprint }) {
   );
 }
 
-function RefundTable({ data, loading }) {
+function RefundTable({ data, loading, onPrint }) {
+  const groups = [];
+  const map = new Map();
+  data.forEach((r) => {
+    const key = r.sale_id;
+    if (!map.has(key)) {
+      map.set(key, {
+        sale_id: key,
+        sale: r.sales,
+        refunds: [],
+        total_refunded: 0,
+      });
+    }
+    const entry = map.get(key);
+    entry.refunds.push(r);
+    entry.total_refunded += Number(r.total_refunded);
+  });
+  for (const entry of map.values()) {
+    groups.push(entry);
+  }
+  groups.sort((a, b) => {
+    const aDate = a.refunds[0]?.refunded_at || '';
+    const bDate = b.refunds[0]?.refunded_at || '';
+    return bDate.localeCompare(aDate);
+  });
+
   return (
     <div className="card-luxury overflow-x-auto">
       <table className="w-full text-sm">
@@ -1075,10 +1106,10 @@ function RefundTable({ data, loading }) {
             <th className="text-left py-3 px-2">Date</th>
             <th className="text-left py-3 px-2">Invoice</th>
             <th className="text-left py-3 px-2">Customer</th>
-            <th className="text-right py-3 px-2">Amount</th>
-            <th className="text-left py-3 px-2">Items</th>
+            <th className="text-right py-3 px-2">Refunded</th>
+            <th className="text-center py-3 px-2">Refunds</th>
             <th className="text-left py-3 px-2">Reason</th>
-            <th className="text-left py-3 px-2">Processed By</th>
+            <th className="text-center py-3 px-2">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -1086,34 +1117,325 @@ function RefundTable({ data, loading }) {
             <tr>
               <td colSpan={7} className="py-8 text-center text-luxury-muted">Loading...</td>
             </tr>
-          ) : data.length === 0 ? (
+          ) : groups.length === 0 ? (
             <tr>
               <td colSpan={7} className="py-8 text-center text-luxury-muted">No refunds recorded yet</td>
             </tr>
           ) : (
-            data.map((r) => {
-              const items = Array.isArray(r.items_refunded) ? r.items_refunded : [];
+            groups.map((g) => {
+              const latest = g.refunds[0];
+              const allItems = g.refunds.flatMap((r) =>
+                Array.isArray(r.items_refunded) ? r.items_refunded : []
+              );
               return (
-                <tr key={r.id} className="border-b border-luxury-border/50">
-                  <td className="py-3 px-2">{formatDateTime(r.refunded_at)}</td>
-                  <td className="py-3 px-2 font-mono text-xs">{r.sales?.invoice_number || '—'}</td>
-                  <td className="py-3 px-2">{r.sales?.customer_name || '—'}</td>
-                  <td className="py-3 px-2 text-right text-red-400">{formatCurrency(r.total_refunded)}</td>
-                  <td className="py-3 px-2 text-xs">
-                    {items.length === 0 ? '—' : items.map((it, i) => (
-                      <span key={i} className="block whitespace-nowrap">
-                        {it.service_name} × {it.quantity} ({formatCurrency(it.line_total)})
-                      </span>
-                    ))}
+                <tr key={g.sale_id} className="border-b border-luxury-border/50">
+                  <td className="py-3 px-2">{formatDateTime(latest.refunded_at)}</td>
+                  <td className="py-3 px-2 font-mono text-xs">{g.sale?.invoice_number || '—'}</td>
+                  <td className="py-3 px-2">{g.sale?.customer_name || '—'}</td>
+                  <td className="py-3 px-2 text-right text-red-400 font-medium">{formatCurrency(g.total_refunded)}</td>
+                  <td className="py-3 px-2 text-center text-xs text-luxury-muted">{g.refunds.length}x</td>
+                  <td className="py-3 px-2 max-w-[160px] truncate text-xs">{latest.refund_reason}</td>
+                  <td className="py-3 px-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => onPrint?.(g)}
+                      className="text-gold-400 hover:text-gold-300 text-xs flex items-center gap-1 mx-auto"
+                    >
+                      <Printer size={14} /> Print Slip
+                    </button>
                   </td>
-                  <td className="py-3 px-2 max-w-[160px] truncate">{r.refund_reason}</td>
-                  <td className="py-3 px-2">{r.profiles?.full_name || '—'}</td>
                 </tr>
               );
             })
           )}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>"']/g, function (m) {
+    if (m === '&') return '&amp;';
+    if (m === '<') return '&lt;';
+    if (m === '>') return '&gt;';
+    if (m === '"') return '&quot;';
+    return '&#39;';
+  });
+}
+
+function RefundPrintModal({ group, onClose }) {
+  if (!group) return null;
+  const { sale, refunds, total_refunded } = group;
+  const allItems = refunds.flatMap((r) =>
+    Array.isArray(r.items_refunded) ? r.items_refunded : []
+  );
+  const latest = refunds[0];
+
+  function buildRefundSlipHtml() {
+    const logoUrl = window.location.origin + '/logo.png';
+    const itemsHtml = allItems.length === 0
+      ? '<tr><td colspan="3" style="text-align:center;padding:8px;color:#666;font-family:\'Courier New\',monospace;font-size:10px;">No items</td></tr>'
+      : allItems.map((it) =>
+        `<tr>
+          <td style="padding:4px 8px;text-align:left;border-bottom:1px solid #ddd;font-family:'Courier New',monospace;font-size:10px;">${escapeHtml(it.service_name)}</td>
+          <td style="padding:4px 8px;text-align:center;border-bottom:1px solid #ddd;font-family:'Courier New',monospace;font-size:10px;">${it.quantity}</td>
+          <td style="padding:4px 8px;text-align:right;border-bottom:1px solid #ddd;font-family:'Courier New',monospace;font-size:10px;">${formatCurrency(it.line_total)}</td>
+        </tr>`
+      ).join('');
+
+    return `<!DOCTYPE html>
+<html>
+<head><title>Refund Slip - ${escapeHtml(sale?.invoice_number || '')}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Courier New', monospace; font-size: 12px; color: #000; background: #fff; padding: 16px; width: 80mm; margin: 0 auto; }
+  .header { text-align: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 2px dashed #000; }
+  .header img { width: 80px; height: 80px; object-fit: contain; margin: 0 auto 8px; display: block; }
+  .company-name { font-weight: bold; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+  .company-detail { font-size: 10px; color: #333; line-height: 1.4; margin-top: 4px; }
+  hr { border: none; border-top: 1px dashed #000; margin: 8px 0; }
+  .info-row { padding: 2px 0; font-size: 11px; }
+  .info-row strong { font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 10px; }
+  th { padding: 4px 0; border-bottom: 2px solid #000; text-align: left; font-size: 10px; }
+  th.right { text-align: right; }
+  th.center { text-align: center; }
+  td { padding: 4px 0; border-bottom: 1px solid #ddd; }
+  td.right { text-align: right; }
+  td.center { text-align: center; }
+  .totals { font-size: 11px; }
+  .totals .row { display: flex; justify-content: space-between; padding: 2px 0; }
+  .totals .grand { font-weight: bold; font-size: 13px; border-top: 1px solid #000; padding-top: 4px; margin-top: 4px; }
+  .totals .grand.total-refunded { color: #dc2626; }
+  .footer { text-align: center; margin-top: 12px; padding-top: 8px; border-top: 2px dashed #000; font-size: 10px; color: #333; }
+  .note { font-size: 10px; color: #888; text-align: center; margin: 4px 0; }
+  .payment { font-size: 10px; margin-top: 4px; text-transform: capitalize; }
+  @media print { body { padding: 0; } }
+</style></head>
+<body>
+  <div class="header">
+    <img src="${logoUrl}" alt="${escapeHtml(companyInfo.name || 'Arizona Car World')}" />
+    <p class="company-name">${escapeHtml(companyInfo.name || 'Arizona Car World')}</p>
+    <p class="company-detail">${escapeHtml(companyInfo.address || '')}</p>
+    ${companyInfo.phone ? `<p class="company-detail">Tel: ${escapeHtml(companyInfo.phone)}</p>` : ''}
+    ${companyInfo.whatsapp ? `<p class="company-detail">WhatsApp: ${escapeHtml(companyInfo.whatsapp)}</p>` : ''}
+    ${companyInfo.instagram ? `<p class="company-detail">IG: ${escapeHtml(companyInfo.instagram)}</p>` : ''}
+  </div>
+
+  <hr />
+
+  <p class="info-row"><strong>Refund Slip</strong></p>
+
+  <hr />
+
+  <p class="info-row"><strong>Invoice #</strong> ${escapeHtml(sale?.invoice_number || '—')}</p>
+  <p class="info-row"><strong>Date:</strong> ${formatDateTime(latest?.refunded_at)}</p>
+
+  <hr />
+
+  <p class="info-row"><strong>Customer:</strong> ${escapeHtml(sale?.customer_name || '—')}</p>
+  ${sale?.customer_phone ? `<p class="info-row"><strong>Phone:</strong> ${escapeHtml(sale.customer_phone)}</p>` : ''}
+  ${sale?.car_model ? `<p class="info-row"><strong>Vehicle:</strong> ${escapeHtml(sale.car_model)}</p>` : ''}
+  ${sale?.car_plate ? `<p class="info-row"><strong>Plate:</strong> ${escapeHtml(sale.car_plate)}</p>` : ''}
+
+  <hr />
+
+  <table>
+    <thead>
+      <tr>
+        <th>Service / Item</th>
+        <th class="center">Qty</th>
+        <th class="right">Amt</th>
+      </tr>
+    </thead>
+    <tbody>${itemsHtml}</tbody>
+  </table>
+
+  <hr />
+
+  <div class="totals">
+    <div class="row grand total-refunded">
+      <span>Total Refunded</span>
+      <span>${formatCurrency(total_refunded)}</span>
+    </div>
+    <div class="row">
+      <span>Original Total</span>
+      <span>${formatCurrency(sale?.total_amount || 0)}</span>
+    </div>
+    <p class="payment">Payment: ${escapeHtml((sale?.payment_method || '').replace('_', ' ') || '—')}</p>
+  </div>
+
+  <hr />
+
+  <p class="info-row"><strong>Reason:</strong> ${escapeHtml(latest?.refund_reason || '—')}</p>
+  <p class="info-row"><strong>Processed By:</strong> ${escapeHtml(latest?.profiles?.full_name || '—')}</p>
+  ${refunds.length > 1 ? `<p class="note">This bill has ${refunds.length} refund transaction(s)</p>` : ''}
+
+  <hr />
+
+  <div class="footer">
+    <p>Thank you for choosing ${escapeHtml(companyInfo.name || 'Arizona Car World')}</p>
+    ${companyInfo.whatsapp ? `<p>WhatsApp: ${escapeHtml(companyInfo.whatsapp)}</p>` : ''}
+  </div>
+</body></html>`;
+  }
+
+  function openPrintWindow(html) {
+    const w = window.open('', '_blank', 'width=400,height=600,scrollbars=yes');
+    if (!w) { alert('Please allow popups to print the refund slip.'); return null; }
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    return w;
+  }
+
+  function autoClosePrintWindow(w) {
+    const closeCheck = setInterval(() => {
+      try {
+        if (w.closed) { clearInterval(closeCheck); return; }
+        if (w.matchMedia) {
+          const mq = w.matchMedia('print');
+          mq.addEventListener('change', function handler(e) {
+            if (!e.matches) {
+              mq.removeEventListener('change', handler);
+              setTimeout(() => { try { if (!w.closed) w.close(); } catch (_) {} }, 500);
+            }
+          });
+        }
+        clearInterval(closeCheck);
+      } catch (_) { clearInterval(closeCheck); }
+    }, 100);
+  }
+
+  function handleThermalPrint() {
+    const w = openPrintWindow(buildRefundSlipHtml());
+    if (w) {
+      setTimeout(() => { w.print(); autoClosePrintWindow(w); }, 500);
+    }
+  }
+
+  function handleA4Print() {
+    const html = buildRefundSlipHtml();
+    const a4Html = html.replace(
+      '</style>',
+      'body { width: 210mm !important; padding: 20mm !important; font-size: 12px !important; }</style>'
+    );
+    const w = openPrintWindow(a4Html);
+    if (w) {
+      setTimeout(() => { w.print(); autoClosePrintWindow(w); }, 500);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-2 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="card-luxury w-full max-w-lg max-h-[95vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-center gap-3">
+            <RotateCcw className="text-red-400" size={24} />
+            <div>
+              <p className="text-xs uppercase tracking-wider text-red-400">Refund Slip</p>
+              <h3 className="text-xl font-display text-gold-400 font-bold">{sale?.invoice_number || 'Refund'}</h3>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="text-luxury-muted hover:text-gold-300 p-1">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="bg-luxury-slate/50 rounded-xl p-4 mb-4 space-y-1 text-sm">
+          <div className="flex justify-between">
+            <span className="text-luxury-muted">Customer</span>
+            <span>{sale?.customer_name || '—'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-luxury-muted">Date</span>
+            <span>{formatDateTime(latest?.refunded_at)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-luxury-muted">Total Refunded</span>
+            <span className="text-red-400 font-bold">{formatCurrency(total_refunded)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-luxury-muted">Original Total</span>
+            <span>{formatCurrency(sale?.total_amount)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-luxury-muted">Payment</span>
+            <span className="capitalize">{sale?.payment_method?.replace('_', ' ') || '—'}</span>
+          </div>
+        </div>
+
+        <p className="text-sm text-luxury-muted mb-2">Refunded Items:</p>
+        <div className="space-y-2 mb-4">
+          {allItems.length === 0 ? (
+            <p className="text-sm text-luxury-muted">No items recorded</p>
+          ) : (
+            allItems.map((it, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-red-500/20 bg-red-950/5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{it.service_name}</p>
+                  <p className="text-xs text-luxury-muted">
+                    Qty: {it.quantity} × {formatCurrency(it.line_total)}
+                  </p>
+                </div>
+                <div className="text-right text-sm font-medium text-red-400">
+                  {formatCurrency(it.line_total)}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {refunds.length > 1 && (
+          <p className="text-xs text-luxury-muted mb-3">
+            This bill has {refunds.length} refund transaction(s)
+          </p>
+        )}
+
+        <label className="label-luxury block mb-1">Reason</label>
+        <p className="text-sm mb-4 bg-luxury-slate/30 rounded-lg p-3">{latest?.refund_reason || '—'}</p>
+
+        <label className="label-luxury block mb-1">Processed By</label>
+        <p className="text-sm mb-4">{latest?.profiles?.full_name || '—'}</p>
+
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={handleThermalPrint} className="btn-outline flex items-center justify-center gap-2 text-sm">
+              <Printer size={16} /> Thermal (80mm)
+            </button>
+            <button type="button" onClick={handleA4Print} className="btn-outline flex items-center justify-center gap-2 text-sm">
+              <Printer size={16} /> A4 Slip
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => downloadRefundPdf(sale, refunds, totalRefunded, allItems, { format: 'a4' })} className="btn-outline flex items-center justify-center gap-2 text-sm">
+              <Download size={16} /> PDF (A4)
+            </button>
+            <button type="button" onClick={() => downloadRefundPdf(sale, refunds, totalRefunded, allItems, { format: 'thermal' })} className="btn-outline flex items-center justify-center gap-2 text-sm">
+              <Download size={16} /> PDF (Thermal)
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" disabled={!sale?.customer_phone} onClick={() => openWhatsApp(sale?.customer_phone, buildRefundWhatsAppMessage(sale, refunds, totalRefunded, allItems))} className="btn-gold flex items-center justify-center gap-2 text-sm py-2">
+              <MessageCircle size={16} /> WhatsApp Customer
+            </button>
+            <button type="button" onClick={() => openWhatsApp(null, buildRefundWhatsAppMessage(sale, refunds, totalRefunded, allItems))} className="btn-outline flex items-center justify-center gap-2 text-sm">
+              <MessageCircle size={16} /> Share to Shop
+            </button>
+          </div>
+        </div>
+        <button type="button" onClick={onClose} className="btn-outline w-full flex items-center justify-center gap-2 py-2 mt-2">
+          Close
+        </button>
+      </div>
     </div>
   );
 }

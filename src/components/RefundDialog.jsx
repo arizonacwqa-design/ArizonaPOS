@@ -198,7 +198,7 @@ export default function RefundDialog({ sale, onClose, onRefunded }) {
                       value={customAmounts[it.id] ?? it.line_total}
                       onClick={(e) => e.stopPropagation()}
                       onChange={(e) => updateAmount(it.id, e.target.value)}
-                      className="w-24 text-right bg-luxury-card border border-luxury-border rounded-lg px-2 py-1 text-sm"
+                      className="w-24 text-right bg-white text-black border border-luxury-border rounded-lg px-2 py-1 text-sm"
                     />
                   ) : (
                     <span className="text-sm text-luxury-muted">{formatCurrency(it.line_total)}</span>

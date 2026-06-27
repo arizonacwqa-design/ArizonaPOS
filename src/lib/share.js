@@ -45,6 +45,32 @@ export function whatsAppUrl(phone, message) {
   return `${base}?text=${encodeURIComponent(message)}`;
 }
 
+export function buildRefundWhatsAppMessage(sale, refunds, totalRefunded, allItems = []) {
+  if (!sale) return '';
+  const lines = allItems
+    .map((i) => `• ${i.service_name} ×${i.quantity} — ${formatCurrency(i.line_total)}`)
+    .join('\n');
+  return [
+    `*${companyInfo.name}*`,
+    `REFUND — Invoice: *${sale.invoice_number}*`,
+    `Date: ${formatDateTime(refunds[0]?.refunded_at)}`,
+    '',
+    `Customer: ${sale.customer_name}`,
+    sale.customer_phone ? `Phone: ${sale.customer_phone}` : null,
+    '',
+    lines || '—',
+    '',
+    `*Total Refunded: ${formatCurrency(totalRefunded)}*`,
+    `Payment: ${(sale.payment_method || 'cash').replace('_', ' ')}`,
+    refunds[0]?.refund_reason ? `Reason: ${refunds[0].refund_reason}` : null,
+    '',
+    'Thank you for choosing Arizona Car World!',
+    companyInfo.whatsapp ? `Shop WhatsApp: ${companyInfo.whatsapp}` : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
 export function openWhatsApp(phone, message) {
   const url = whatsAppUrl(phone, message);
   if (window.electronAPI?.openExternal) {
