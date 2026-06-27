@@ -10,6 +10,13 @@ All notable changes to the Arizona Car World POS system.
 - ErrorBoundary wrapping on all routes
 - Daily/Monthly/All refund views with print in Reports
 - Dual remote Git workflow documentation
+- **Refund slip printing**: Thermal (80mm) + A4 print popup with auto-close
+- **Refund PDF download**: A4 + Thermal format via jsPDF
+- **Refund WhatsApp sharing**: Customer + Shop share buttons with refund details
+- **Bill-wise refund report**: RefundTable grouped by sale_id instead of individual transactions
+- **Migration 014** applied live via supabase CLI (process_partial_refund RPC)
+- `refundPdf.js` — PDF generation module for refund slips
+- `buildRefundWhatsAppMessage()` in share.js for refund messaging
 
 ### Fixed
 - **Issue #4**: Customer upsert moved into `create_sale()` RPC (Migration 010). Sale failure no longer creates orphaned customer records.
@@ -22,6 +29,10 @@ All notable changes to the Arizona Car World POS system.
 - **Issue #11**: `CustomerAutocomplete` now remounts on new sale via `key` prop, clearing internal state.
 - **Issue #12**: Added DB-level partial unique index on `inventory_purchases.bill_number`. Client-side check removed. User-friendly error on duplicate.
 - **Issue #13**: Full refund system — Migration 012 adds `refunded_at`, `refund_reason`, `refunded_by`, `original_sale_id` columns to `sales`; creates `refund_log` table; `process_refund()` RPC (admin-only, reverses stock, logs refund); `RefundDialog` component; refund button in ReprintModal; Refunds tab in Reports (admin-only). Daily/monthly totals exclude refunded sales.
+- **process_partial_refund 400 error**: Removed `JSON.stringify(items)` — caused double-encoding of JSON array
+- **Refund amount input invisible**: Changed `bg-luxury-card` (invalid class) to `bg-white text-black`
+- **Logo broken in print popup**: Changed relative `/logo.png` to absolute `window.location.origin + '/logo.png'`
+- **ErrorBoundary UI**: Upgraded with Reload Page, Try Again, and Copy error details buttons matching Arizona theme
 
 ### New Migrations
 - `009_bill_number_unique.sql` — Partial unique index on bill_number
@@ -29,6 +40,7 @@ All notable changes to the Arizona Car World POS system.
 - `011_booking_cleanup.sql` — archive_old_bookings() function
 - `012_refund_system.sql` — Full refund schema + RPC
 - `013_data_purge.sql` — archive_inactive_services(), archive_old_customers()
+- `014_partial_refund.sql` — Single-item & custom refund (process_partial_refund RPC)
 
 ## [1.0.0] — 2026-06-25
 

@@ -9,7 +9,7 @@
 - [ ] **Arabic Translation Completion**: Many pages have gaps in Arabic translations (expense categories, booking statuses, error messages).
 - [ ] **Pagination for All Tables**: Reports page tables (inventory usage, expenses) currently load all data without pagination.
 - [ ] **Role-based UI Hiding**: Currently employee pages show "Only admins" message; consider redirecting instead.
-- [ ] **Error Boundary Enhancement**: Global ErrorBoundary exists but should offer "report error" functionality.
+- [x] **Error Boundary Enhancement**: Global ErrorBoundary improved with Reload Page, Try Again, and Copy error details buttons.
 
 ## Priority: Low
 
