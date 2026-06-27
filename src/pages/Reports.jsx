@@ -56,6 +56,9 @@ export default function Reports() {
   const [refundDialogSale, setRefundDialogSale] = useState(null);
   const [refundLog, setRefundLog] = useState([]);
   const [refundLogLoading, setRefundLogLoading] = useState(false);
+  const [refundView, setRefundView] = useState('daily');
+  const [selectedRefundDate, setSelectedRefundDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [selectedRefundMonth, setSelectedRefundMonth] = useState(format(new Date(), 'yyyy-MM'));
 
   async function openReprint(sale) {
     setReprintSale(sale);
@@ -130,7 +133,7 @@ export default function Reports() {
     const [salesRes, itemsRes, invRes, profRes, purchRes, usageRes] = await Promise.all([
       supabase
         .from('sales')
-        .select('*, profiles(full_name)')
+        .select('*, profiles!employee_id(full_name)')
         .order('created_at', { ascending: false }),
       supabase.from('sale_items').select('*'),
       supabase.from('inventory_items').select('*').order('name'),
@@ -154,7 +157,10 @@ export default function Reports() {
     setLoading(false);
   }
 
-  const activeSales = useMemo(() => sales.filter((s) => !s.refunded_at), [sales]);
+  const activeSales = useMemo(() => sales.filter((s) => {
+    if (!s.refunded_at) return true;
+    return (Number(s.refunded_amount) || 0) < Number(s.total_amount);
+  }), [sales]);
 
   const dailySales = useMemo(
     () =>
@@ -180,6 +186,26 @@ export default function Reports() {
     loadRefundLog();
     loadReports();
   }
+
+  const dailyRefunds = useMemo(
+    () =>
+      refundLog.filter(
+        (r) => format(new Date(r.refunded_at), 'yyyy-MM-dd') === selectedRefundDate
+      ),
+    [refundLog, selectedRefundDate]
+  );
+
+  const dailyRefundTotal = dailyRefunds.reduce((sum, r) => sum + Number(r.total_refunded), 0);
+
+  const monthlyRefunds = useMemo(
+    () =>
+      refundLog.filter(
+        (r) => format(new Date(r.refunded_at), 'yyyy-MM') === selectedRefundMonth
+      ),
+    [refundLog, selectedRefundMonth]
+  );
+
+  const monthlyRefundTotal = monthlyRefunds.reduce((sum, r) => sum + Number(r.total_refunded), 0);
 
   const monthlySales = useMemo(
     () =>
@@ -891,47 +917,70 @@ export default function Reports() {
       )}
 
       {tab === 'refunds' && isAdmin && (
-        <div className="space-y-4">
-          <div className="card-luxury">
-            <p className="text-sm text-luxury-muted">Refund Log</p>
-            <p className="text-3xl font-bold text-gold-400">{refundLog.length} total</p>
+        <div className="space-y-4" data-print-area="refund-report">
+          <div className="flex items-center justify-between">
+            <div className="flex gap-2 flex-wrap">
+              {['daily','monthly','all'].map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                    refundView === v ? 'bg-gold-500 text-black' : 'bg-luxury-card text-luxury-muted'
+                  }`}
+                  onClick={() => setRefundView(v)}
+                >
+                  {v === 'daily' ? 'Daily Refunds' : v === 'monthly' ? 'Monthly Refunds' : 'All Refunds'}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => { document.body.classList.add('printing-refund-report'); window.print(); setTimeout(() => document.body.classList.remove('printing-refund-report'), 500); }}
+              className="btn-outline flex items-center gap-2 text-sm"
+            >
+              <Printer size={16} /> Print
+            </button>
           </div>
-          <div className="card-luxury overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-luxury-muted border-b border-luxury-border">
-                  <th className="text-left py-3 px-2">Date</th>
-                  <th className="text-left py-3 px-2">Invoice</th>
-                  <th className="text-left py-3 px-2">Customer</th>
-                  <th className="text-right py-3 px-2">Amount</th>
-                  <th className="text-left py-3 px-2">Reason</th>
-                  <th className="text-left py-3 px-2">Processed By</th>
-                </tr>
-              </thead>
-              <tbody>
-                {refundLogLoading ? (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-luxury-muted">Loading...</td>
-                  </tr>
-                ) : refundLog.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-luxury-muted">No refunds recorded yet</td>
-                  </tr>
-                ) : (
-                  refundLog.map((r) => (
-                    <tr key={r.id} className="border-b border-luxury-border/50">
-                      <td className="py-3 px-2">{formatDateTime(r.refunded_at)}</td>
-                      <td className="py-3 px-2 font-mono text-xs">{r.sales?.invoice_number || '—'}</td>
-                      <td className="py-3 px-2">{r.sales?.customer_name || '—'}</td>
-                      <td className="py-3 px-2 text-right text-red-400">{formatCurrency(r.total_refunded)}</td>
-                      <td className="py-3 px-2 max-w-[200px] truncate">{r.refund_reason}</td>
-                      <td className="py-3 px-2">{r.profiles?.full_name || '—'}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+
+          {refundView === 'daily' && (
+            <div className="space-y-4">
+              <input
+                type="date"
+                className="input-luxury w-auto"
+                value={selectedRefundDate}
+                onChange={(e) => setSelectedRefundDate(e.target.value)}
+              />
+              <div className="card-luxury">
+                <p className="text-3xl font-bold text-red-400">{formatCurrency(dailyRefundTotal)}</p>
+                <p className="text-luxury-muted">{dailyRefunds.length} refunds</p>
+              </div>
+              <RefundTable data={dailyRefunds} loading={refundLogLoading} />
+            </div>
+          )}
+
+          {refundView === 'monthly' && (
+            <div className="space-y-4">
+              <input
+                type="month"
+                className="input-luxury w-auto"
+                value={selectedRefundMonth}
+                onChange={(e) => setSelectedRefundMonth(e.target.value)}
+              />
+              <div className="card-luxury">
+                <p className="text-2xl font-bold text-red-400">{formatCurrency(monthlyRefundTotal)}</p>
+                <p className="text-luxury-muted">{monthlyRefunds.length} refunds</p>
+              </div>
+              <RefundTable data={monthlyRefunds} loading={refundLogLoading} />
+            </div>
+          )}
+
+          {refundView === 'all' && (
+            <div className="card-luxury">
+              <p className="text-sm text-luxury-muted">All Refunds</p>
+              <p className="text-3xl font-bold text-gold-400">{refundLog.length} total</p>
+            </div>
+          )}
+          {refundView === 'all' && <RefundTable data={refundLog} loading={refundLogLoading} />}
         </div>
       )}
 
@@ -1013,6 +1062,58 @@ function SalesTable({ data, onReprint }) {
           className="px-3 py-1 bg-gray-800 text-white rounded disabled:opacity-40"
         >Next</button>
       </div>
+    </div>
+  );
+}
+
+function RefundTable({ data, loading }) {
+  return (
+    <div className="card-luxury overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-luxury-muted border-b border-luxury-border">
+            <th className="text-left py-3 px-2">Date</th>
+            <th className="text-left py-3 px-2">Invoice</th>
+            <th className="text-left py-3 px-2">Customer</th>
+            <th className="text-right py-3 px-2">Amount</th>
+            <th className="text-left py-3 px-2">Items</th>
+            <th className="text-left py-3 px-2">Reason</th>
+            <th className="text-left py-3 px-2">Processed By</th>
+          </tr>
+        </thead>
+        <tbody>
+          {loading ? (
+            <tr>
+              <td colSpan={7} className="py-8 text-center text-luxury-muted">Loading...</td>
+            </tr>
+          ) : data.length === 0 ? (
+            <tr>
+              <td colSpan={7} className="py-8 text-center text-luxury-muted">No refunds recorded yet</td>
+            </tr>
+          ) : (
+            data.map((r) => {
+              const items = Array.isArray(r.items_refunded) ? r.items_refunded : [];
+              return (
+                <tr key={r.id} className="border-b border-luxury-border/50">
+                  <td className="py-3 px-2">{formatDateTime(r.refunded_at)}</td>
+                  <td className="py-3 px-2 font-mono text-xs">{r.sales?.invoice_number || '—'}</td>
+                  <td className="py-3 px-2">{r.sales?.customer_name || '—'}</td>
+                  <td className="py-3 px-2 text-right text-red-400">{formatCurrency(r.total_refunded)}</td>
+                  <td className="py-3 px-2 text-xs">
+                    {items.length === 0 ? '—' : items.map((it, i) => (
+                      <span key={i} className="block whitespace-nowrap">
+                        {it.service_name} × {it.quantity} ({formatCurrency(it.line_total)})
+                      </span>
+                    ))}
+                  </td>
+                  <td className="py-3 px-2 max-w-[160px] truncate">{r.refund_reason}</td>
+                  <td className="py-3 px-2">{r.profiles?.full_name || '—'}</td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -1221,7 +1322,7 @@ function ReprintModal({
           </div>
           </div>
 
-          {isAdmin && !sale.refunded_at && (
+          {isAdmin && (!sale.refunded_at || Number(sale.refunded_amount) < Number(sale.total_amount)) && (
             <button
               type="button"
               disabled={loading || !!error}
@@ -1231,9 +1332,14 @@ function ReprintModal({
               <RotateCcw size={16} /> Refund This Invoice
             </button>
           )}
-          {sale.refunded_at && (
+          {(sale.refunded_at && Number(sale.refunded_amount) >= Number(sale.total_amount)) && (
             <p className="text-xs text-red-400 text-center mt-2">
               Refunded on {formatDateTime(sale.refunded_at)}
+            </p>
+          )}
+          {(sale.refunded_at && Number(sale.refunded_amount) > 0 && Number(sale.refunded_amount) < Number(sale.total_amount)) && (
+            <p className="text-xs text-amber-400 text-center mt-2">
+              Partially refunded ({formatCurrency(sale.refunded_amount)} of {formatCurrency(sale.total_amount)})
             </p>
           )}
 

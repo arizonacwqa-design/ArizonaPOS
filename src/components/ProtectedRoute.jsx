@@ -1,4 +1,4 @@
-import { Navigate, Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 
 export default function ProtectedRoute({ children, adminOnly = false }) {

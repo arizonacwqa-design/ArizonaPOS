@@ -245,4 +245,21 @@
     background: #fff !important;
     padding: 16px;
   }
+
+  body.printing-refund-report * {
+    visibility: hidden;
+  }
+  body.printing-refund-report [data-print-area="refund-report"],
+  body.printing-refund-report [data-print-area="refund-report"] * {
+    visibility: visible;
+  }
+  body.printing-refund-report [data-print-area="refund-report"] {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    color: #000 !important;
+    background: #fff !important;
+    padding: 16px;
+  }
 }

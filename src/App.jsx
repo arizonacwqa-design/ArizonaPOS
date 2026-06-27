@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
+import ErrorBoundary from './ErrorBoundary';
 import AppRouter from './components/AppRouter';
 import ProtectedRoute from './components/ProtectedRoute';
 import GuestRoute from './components/GuestRoute';
@@ -29,81 +30,83 @@ export default function App() {
   }, [init]);
 
   return (
-    <AppRouter>
-      <Routes>
-
-        <Route
-          path="/login"
-          element={<Navigate to="/login/employee" replace />}
-        />
-
-        <Route
-          path="/login/:role"
-          element={
-            <GuestRoute>
-              <Login />
-            </GuestRoute>
-          }
-        />
-
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }
-        >
-
-          <Route index element={<Dashboard />} />
-
-          <Route path="pos" element={<POS />} />
-
-          <Route path="inventory" element={<Inventory />} />
+    <ErrorBoundary>
+      <AppRouter>
+        <Routes>
 
           <Route
-            path="purchases"
-            element={
-              <ProtectedRoute adminOnly>
-                <Purchases />
-              </ProtectedRoute>
-            }
+            path="/login"
+            element={<Navigate to="/login/employee" replace />}
           />
 
-          <Route path="reports" element={<Reports />} />
-
-          <Route path="services" element={<Services />} />
-
-          <Route path="customers" element={<Customers />} />
-
-          <Route path="bookings" element={<Bookings />} />
-
           <Route
-            path="backup"
+            path="/login/:role"
             element={
-              <ProtectedRoute adminOnly>
-                <Backup />
-              </ProtectedRoute>
+              <GuestRoute>
+                <ErrorBoundary><Login /></ErrorBoundary>
+              </GuestRoute>
             }
           />
 
           <Route
-            path="expenses"
+            path="/"
             element={
-              <ProtectedRoute adminOnly>
-                <Expenses />
+              <ProtectedRoute>
+                <ErrorBoundary><Layout /></ErrorBoundary>
               </ProtectedRoute>
             }
-          />
+          >
 
-          <Route path="settings" element={<Settings />} />
+            <Route index element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
 
-        </Route>
+            <Route path="pos" element={<ErrorBoundary><POS /></ErrorBoundary>} />
 
-        {/* Catch-all so unknown URLs go home instead of showing a blank screen */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="inventory" element={<ErrorBoundary><Inventory /></ErrorBoundary>} />
 
-      </Routes>
-    </AppRouter>
+            <Route
+              path="purchases"
+              element={
+                <ProtectedRoute adminOnly>
+                  <ErrorBoundary><Purchases /></ErrorBoundary>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route path="reports" element={<ErrorBoundary><Reports /></ErrorBoundary>} />
+
+            <Route path="services" element={<ErrorBoundary><Services /></ErrorBoundary>} />
+
+            <Route path="customers" element={<ErrorBoundary><Customers /></ErrorBoundary>} />
+
+            <Route path="bookings" element={<ErrorBoundary><Bookings /></ErrorBoundary>} />
+
+            <Route
+              path="backup"
+              element={
+                <ProtectedRoute adminOnly>
+                  <ErrorBoundary><Backup /></ErrorBoundary>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="expenses"
+              element={
+                <ProtectedRoute adminOnly>
+                  <ErrorBoundary><Expenses /></ErrorBoundary>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route path="settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
+
+          </Route>
+
+          {/* Catch-all so unknown URLs go home instead of showing a blank screen */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+
+        </Routes>
+      </AppRouter>
+    </ErrorBoundary>
   );
 }
