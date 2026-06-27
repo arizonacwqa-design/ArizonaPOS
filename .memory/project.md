@@ -120,3 +120,18 @@ VITE_COMPANY_WHATSAPP=+1 555 000 0000
 VITE_COMPANY_INSTAGRAM=@arizonacarworld
 VITE_DEFAULT_TAX_RATE=0
 ```
+
+## Git Remotes & Backup Workflow
+
+| Repo | Remote | Purpose |
+|------|--------|---------|
+| **Primary** | `github.com/arizonacwqa-design/ArizonaPOS` | Development, testing, daily work |
+| **Backup** | `github.com/mrsaifali-7898/ArizonaPOS` | Clean copy after testing, no secrets |
+
+**Workflow:**
+1. All changes made in `arizonacwqa-design` repos first
+2. Test + verify (build passes, no errors)
+3. Push to `arizonacwqa-design` (primary)
+4. Then force-push clean copy to `mrsaifali-7898` (backup)
+
+**Backup PAT:** Classic token stored in system (scopes: `repo`)

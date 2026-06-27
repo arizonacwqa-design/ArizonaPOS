@@ -6,8 +6,12 @@ All notable changes to the Arizona Car World POS system.
 
 ### Added
 - .memory/ documentation directory with system analysis
+- Partial refund system: single-item & custom refund (Migration 014, RefundDialog rewrite)
+- ErrorBoundary wrapping on all routes
+- Daily/Monthly/All refund views with print in Reports
+- Dual remote Git workflow documentation
 
-### Changed (Fixes Batch — 2026-06-27)
+### Fixed
 - **Issue #4**: Customer upsert moved into `create_sale()` RPC (Migration 010). Sale failure no longer creates orphaned customer records.
 - **Issue #5**: Inventory Usage Report now queries `inventory_usage_report` DB view instead of client-side join. Faster on large datasets.
 - **Issue #6**: Expense translation wrapper returns empty string instead of JSON-stringified objects when translation key returns an object.

@@ -60,3 +60,9 @@
 - **Decision**: Simple JSON-based translation system, no i18n library.
 - **Supported**: English (en), Arabic (ar) — partial coverage.
 - **Store**: Language preference persisted in Zustand + localStorage.
+
+## Git Workflow: Dual Remote
+- **Decision**: Two GitHub remotes — primary (arizonacwqa-design) for dev, backup (mrsaifali-7898) for clean copies.
+- **Reason**: Keep development in `arizonacwqa-design` org; push clean (secrets-removed) copies to personal backup.
+- **Workflow**: Change → arizonacwqa-design → test → force-push to mrsaifali-7898
+- **Backup PAT**: Classic token with `repo` scope (stored locally, not committed)
