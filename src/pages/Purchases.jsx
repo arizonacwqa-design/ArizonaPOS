@@ -106,20 +106,6 @@ export default function Purchases() {
       return;
     }
 
-    // Validate bill number uniqueness if provided
-    if (form.bill_number.trim()) {
-      const { data: existingBill } = await supabase
-        .from('inventory_purchases')
-        .select('id')
-        .eq('bill_number', form.bill_number.trim())
-        .maybeSingle();
-      
-      if (existingBill) {
-        setMessage('Bill number already exists. Use a unique bill number or leave it blank.');
-        return;
-      }
-    }
-
     setLoading(true);
     const payload = {
       bill_number: form.bill_number.trim() || null,
@@ -138,7 +124,11 @@ export default function Purchases() {
     setLoading(false);
 
     if (error) {
-      setMessage(error.message);
+      if (error.message?.includes('unique') || error.code === '23505') {
+        setMessage('Bill number already exists. Use a unique bill number or leave it blank.');
+      } else {
+        setMessage(error.message);
+      }
     } else {
       setMessage('Purchase recorded — stock increased automatically!');
       setForm({

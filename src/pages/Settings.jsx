@@ -1,13 +1,19 @@
+import { useState } from 'react';
 import { useTranslation } from '@/lib/translations';
 import { useLanguageStore } from '@/store/languageStore';
 import { useThemeStore } from '@/store/themeStore';
 import { companyInfo } from '@/lib/supabase';
-import { Globe, Palette, Info, Phone, MapPin, Instagram } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
+import { supabase } from '@/lib/supabase';
+import { Globe, Palette, Info, Phone, MapPin, Instagram, Trash2 } from 'lucide-react';
 
 export default function Settings() {
   const { t } = useTranslation();
   const { language, setLanguage } = useLanguageStore();
   const { theme, setTheme } = useThemeStore();
+  const isAdmin = useAuthStore((s) => s.isAdmin());
+  const [archiveMsg, setArchiveMsg] = useState('');
+  const [archiving, setArchiving] = useState('');
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
@@ -137,6 +143,55 @@ export default function Settings() {
             </div>
           </div>
         </div>
+
+        {isAdmin && (
+          <div className="card-luxury md:col-span-2 space-y-4 mt-6">
+            <div className="flex items-center gap-3 border-b border-luxury-border pb-3">
+              <Trash2 className="text-red-400" size={22} />
+              <h2 className="text-lg font-semibold text-white">Data Maintenance</h2>
+            </div>
+            <p className="text-sm text-luxury-muted">
+              Archive old records to keep the system performant. These actions are irreversible.
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <button
+                type="button"
+                disabled={!!archiving}
+                onClick={async () => {
+                  setArchiving('services');
+                  setArchiveMsg('');
+                  const { data, error } = await supabase.rpc('archive_inactive_services');
+                  setArchiving('');
+                  if (error) setArchiveMsg('Error: ' + error.message);
+                  else setArchiveMsg(`Archived ${data} inactive service(s).`);
+                }}
+                className="btn-outline inline-flex items-center gap-2"
+              >
+                {archiving === 'services' ? 'Archiving...' : 'Archive Inactive Services'}
+              </button>
+              <button
+                type="button"
+                disabled={!!archiving}
+                onClick={async () => {
+                  setArchiving('customers');
+                  setArchiveMsg('');
+                  const { data, error } = await supabase.rpc('archive_old_customers', { p_months: 12 });
+                  setArchiving('');
+                  if (error) setArchiveMsg('Error: ' + error.message);
+                  else setArchiveMsg(`Archived ${data} old customer(s).`);
+                }}
+                className="btn-outline inline-flex items-center gap-2"
+              >
+                {archiving === 'customers' ? 'Archiving...' : 'Archive Old Customers (12mo)'}
+              </button>
+            </div>
+            {archiveMsg && (
+              <p className={`text-sm ${archiveMsg.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}>
+                {archiveMsg}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

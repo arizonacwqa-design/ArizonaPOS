@@ -37,7 +37,7 @@ export default function Expenses() {
     try {
       const val = originalT(key);
       if (typeof val === 'object' && val !== null) {
-        return JSON.stringify(val);
+        return '';
       }
       return val !== undefined ? String(val) : '';
     } catch (e) {

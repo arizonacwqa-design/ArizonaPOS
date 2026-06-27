@@ -25,7 +25,7 @@ import A4Invoice from '@/components/A4Invoice';
 import InvoicePreviewPanel from '@/components/pos/InvoicePreviewPanel';
 import InventoryUsageSection from '@/components/pos/InventoryUsageSection';
 import CustomerAutocomplete from '@/components/CustomerAutocomplete';
-import { upsertCustomerFromSale } from '@/lib/customers';
+
 import { buildInvoiceWhatsAppMessage, openWhatsApp } from '@/lib/share';
 import { downloadLuxuryInvoicePdf } from '@/lib/invoicePdf';
 import {
@@ -179,21 +179,10 @@ export default function POS() {
     setLoading(true);
     setMessage('');
 
-    let customerId = null;
-    let customerWarning = '';
-    try {
-      customerId = await upsertCustomerFromSale({
-        customer_name: customer.customer_name,
-        customer_phone: customer.customer_phone,
-        total_amount: billing.total,
-      });
-    } catch (e) {
-      // Don't block the sale — record a warning we'll show with the success message.
-      customerWarning =
-        e?.code === 'PGRST205' || /relation .* does not exist/i.test(e?.message || '')
-          ? 'Sale saved, but customers table is missing — run migration 005.'
-          : `Sale saved, but customer record not created: ${e?.message || 'unknown error'}`;
-    }
+    const customerPayload = {
+      customer_name: customer.customer_name.trim(),
+      customer_phone: customer.customer_phone.trim() || null,
+    };
 
     const salePayload = {
       ...customer,
@@ -206,7 +195,6 @@ export default function POS() {
       payment_method: paymentMethod,
       employee_id: user?.id,
       notes: notes.trim() || null,
-      customer_id: customerId || null,
     };
 
     const itemsPayload = saleItemsPayload(cart, null).map(({ sale_id: _ignore, ...rest }) => rest);
@@ -214,6 +202,7 @@ export default function POS() {
     const { data: rpcResult, error: rpcError } = await supabase.rpc('create_sale', {
       p_sale: salePayload,
       p_items: itemsPayload,
+      p_customer: customerPayload,
     });
 
     setLoading(false);
@@ -245,11 +234,7 @@ export default function POS() {
     setLastSale(sale);
     setLastItems(items);
     setLastInventoryUsage(inventoryUsage);
-    setMessage(
-      customerWarning
-        ? `Invoice ${sale.invoice_number} saved — ${customerWarning}`
-        : `Invoice ${sale.invoice_number} saved — stock updated automatically`
-    );
+    setMessage(`Invoice ${sale.invoice_number} saved — stock updated automatically`);
     setCart([]);
     setCustomer(emptyCustomer);
     setNotes('');
@@ -312,6 +297,7 @@ export default function POS() {
             <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label={t('customerName')} required>
                 <CustomerAutocomplete
+                  key={lastSale?.id || 'new'}
                   value={customer}
                   onChange={setCustomer}
                   onSelect={setCustomer}
@@ -595,7 +581,7 @@ export default function POS() {
                     value={discount}
                     onChange={(e) => {
                       const v = e.target.value;
-                      if (v === '') return setDiscount('');
+                      if (v === '') return setDiscount(0);
                       const n = Number(v);
                       const max = discountType === 'percent' ? 100 : Infinity;
                       setDiscount(Number.isFinite(n) && n >= 0 ? Math.min(n, max) : 0);

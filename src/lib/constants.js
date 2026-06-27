@@ -35,6 +35,9 @@ export const POS_SERVICE_GROUPS = [
 
 export const DEFAULT_TAX_RATE = Number(import.meta.env.VITE_DEFAULT_TAX_RATE) || 0;
 
+/** Scanner buffer timeout in ms */
+export const SCAN_TIMEOUT = 100;
+
 export const PAYMENT_METHODS = [
   { value: 'cash', label: 'Cash' },
   { value: 'card', label: 'Card' },

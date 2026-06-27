@@ -93,6 +93,10 @@ VITE_COMPANY_ADDRESS=Souq Al Qalh, East Industrial Service Road, Doha, Qatar
 VITE_COMPANY_PHONE=+1 555 000 0000
 VITE_COMPANY_WHATSAPP=+1 555 000 0000
 VITE_COMPANY_INSTAGRAM=@arizonacarworld
+VITE_COMPANY_ADDRESS=Souq Al Qalh, East Industrial Service Road, Doha, Qatar
+VITE_COMPANY_PHONE=+1 555 000 0000
+VITE_COMPANY_WHATSAPP=+1 555 000 0000
+VITE_COMPANY_INSTAGRAM=@arizonacarworld
 ```
 
 ---
@@ -123,22 +127,11 @@ npm run dev
 
 Login with the email/password you created in Step 6.
 
+Login with the email/password you created in Step 6.
+
 ---
 
-### Step 8 — Build for production (optional)
 
-```powershell
-npm run build
-npm run electron
-```
-
-Or package an installer:
-
-```powershell
-npm run pack
-```
-
-Output goes to the `release/` folder.
 
 ---
 

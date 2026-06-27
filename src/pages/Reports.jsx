@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Printer, Download, MessageCircle, X, FileText, Search } from 'lucide-react';
+import { Printer, Download, MessageCircle, X, FileText, Search, RotateCcw } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatCurrency, formatDate, formatDateTime, formatStock, isLowStock } from '@/lib/format';
@@ -14,6 +14,8 @@ import ThermalInvoice from '@/components/ThermalInvoice';
 import A4Invoice from '@/components/A4Invoice';
 import { downloadLuxuryInvoicePdf } from '@/lib/invoicePdf';
 import { buildInvoiceWhatsAppMessage, openWhatsApp } from '@/lib/share';
+import RefundDialog from '@/components/RefundDialog';
+import { getRefundLog } from '@/lib/refund';
 
 const TABS = [
   { id: 'daily', label: 'Daily Sales' },
@@ -27,6 +29,7 @@ const TABS = [
   { id: 'invusage', label: 'Inventory Usage' },
   { id: 'employees', label: 'Employee Sales' },
   { id: 'purchases', label: 'Purchase Reports' },
+  { id: 'refunds', label: 'Refunds', adminOnly: true },
 ];
 
 export default function Reports() {
@@ -50,6 +53,9 @@ export default function Reports() {
   const [fromDate, setFromDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [toDate, setToDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [purchaseView, setPurchaseView] = useState('daily');
+  const [refundDialogSale, setRefundDialogSale] = useState(null);
+  const [refundLog, setRefundLog] = useState([]);
+  const [refundLogLoading, setRefundLogLoading] = useState(false);
 
   async function openReprint(sale) {
     setReprintSale(sale);
@@ -115,9 +121,13 @@ export default function Reports() {
     loadReports();
   }, []);
 
+  useEffect(() => {
+    if (tab === 'refunds') loadRefundLog();
+  }, [tab]);
+
   async function loadReports() {
     setLoading(true);
-    const [salesRes, itemsRes, invRes, profRes, purchRes] = await Promise.all([
+    const [salesRes, itemsRes, invRes, profRes, purchRes, usageRes] = await Promise.all([
       supabase
         .from('sales')
         .select('*, profiles(full_name)')
@@ -129,49 +139,54 @@ export default function Reports() {
         .from('inventory_purchases')
         .select('*, inventory_items(name)')
         .order('purchase_date', { ascending: false }),
+      supabase
+        .from('inventory_usage_report')
+        .select('*')
+        .order('created_at', { ascending: false }),
     ]);
-    
-    // Calculate inventory usage client-side since materialized view doesn't exist
-    const usageData = [];
-    (itemsRes.data || []).forEach(item => {
-      if (!item.inventory_item_id || !Number(item.inventory_deducted)) return;
-      const sale = (salesRes.data || []).find(s => s.id === item.sale_id);
-      const invItem = (invRes.data || []).find(i => i.id === item.inventory_item_id);
-      usageData.push({
-        id: item.id,
-        sale_date: sale?.sale_date,
-        created_at: sale?.created_at,
-        invoice_number: sale?.invoice_number,
-        item_name: invItem?.name || item.service_name,
-        stock_type: invItem?.stock_type || 'quantity',
-        amount_used: Number(item.inventory_deducted),
-      });
-    });
-    usageData.sort((a, b) => new Date(b.sale_date || b.created_at) - new Date(a.sale_date || a.created_at));
     
     setSales(salesRes.data || []);
     setSaleItems(itemsRes.data || []);
     setInventory(invRes.data || []);
     setProfiles(profRes.data || []);
     setPurchases(purchRes.data || []);
-    setInventoryUsage(usageData);
+    setInventoryUsage(usageRes.data || []);
     setLoading(false);
   }
 
+  const activeSales = useMemo(() => sales.filter((s) => !s.refunded_at), [sales]);
+
   const dailySales = useMemo(
     () =>
-      sales.filter(
+      activeSales.filter(
         (s) => format(new Date(s.sale_date || s.created_at), 'yyyy-MM-dd') === selectedDate
       ),
-    [sales, selectedDate]
+    [activeSales, selectedDate]
   );
+
+  async function loadRefundLog() {
+    setRefundLogLoading(true);
+    try {
+      const data = await getRefundLog();
+      setRefundLog(data);
+    } catch {
+      setRefundLog([]);
+    }
+    setRefundLogLoading(false);
+  }
+
+  function handleRefundSuccess() {
+    setRefundDialogSale(null);
+    loadRefundLog();
+    loadReports();
+  }
 
   const monthlySales = useMemo(
     () =>
-      sales.filter(
+      activeSales.filter(
         (s) => format(new Date(s.sale_date || s.created_at), 'yyyy-MM') === selectedMonth
       ),
-    [sales, selectedMonth]
+    [activeSales, selectedMonth]
   );
 
   const monthlyPurchases = useMemo(() => {
@@ -626,7 +641,7 @@ export default function Reports() {
                 ).length === 0 && (
                   <tr>
                     <td colSpan={5} className="py-8 text-center text-luxury-muted">
-                      No inventory usage this month (run migration 004 for report view)
+                      No inventory usage this month
                     </td>
                   </tr>
                 )}
@@ -644,6 +659,8 @@ export default function Reports() {
         error={reprintError}
         onClose={closeReprint}
         onPrint={reprintBrowserPrint}
+        isAdmin={isAdmin}
+        onRefund={setRefundDialogSale}
       />
 
       {reprintSale && (
@@ -872,6 +889,57 @@ export default function Reports() {
           </div>
         </div>
       )}
+
+      {tab === 'refunds' && isAdmin && (
+        <div className="space-y-4">
+          <div className="card-luxury">
+            <p className="text-sm text-luxury-muted">Refund Log</p>
+            <p className="text-3xl font-bold text-gold-400">{refundLog.length} total</p>
+          </div>
+          <div className="card-luxury overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-luxury-muted border-b border-luxury-border">
+                  <th className="text-left py-3 px-2">Date</th>
+                  <th className="text-left py-3 px-2">Invoice</th>
+                  <th className="text-left py-3 px-2">Customer</th>
+                  <th className="text-right py-3 px-2">Amount</th>
+                  <th className="text-left py-3 px-2">Reason</th>
+                  <th className="text-left py-3 px-2">Processed By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {refundLogLoading ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-luxury-muted">Loading...</td>
+                  </tr>
+                ) : refundLog.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-luxury-muted">No refunds recorded yet</td>
+                  </tr>
+                ) : (
+                  refundLog.map((r) => (
+                    <tr key={r.id} className="border-b border-luxury-border/50">
+                      <td className="py-3 px-2">{formatDateTime(r.refunded_at)}</td>
+                      <td className="py-3 px-2 font-mono text-xs">{r.sales?.invoice_number || '—'}</td>
+                      <td className="py-3 px-2">{r.sales?.customer_name || '—'}</td>
+                      <td className="py-3 px-2 text-right text-red-400">{formatCurrency(r.total_refunded)}</td>
+                      <td className="py-3 px-2 max-w-[200px] truncate">{r.refund_reason}</td>
+                      <td className="py-3 px-2">{r.profiles?.full_name || '—'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <RefundDialog
+        sale={refundDialogSale}
+        onClose={() => setRefundDialogSale(null)}
+        onRefunded={handleRefundSuccess}
+      />
     </div>
   );
 }
@@ -957,6 +1025,8 @@ function ReprintModal({
   error,
   onClose,
   onPrint,
+  isAdmin,
+  onRefund,
 }) {
   if (!sale) return null;
   const customerPhone = sale.customer_phone;
@@ -1149,9 +1219,25 @@ function ReprintModal({
               <MessageCircle size={16} /> Share to Shop
             </button>
           </div>
-        </div>
+          </div>
 
-        {inventoryUsage.length > 0 && (
+          {isAdmin && !sale.refunded_at && (
+            <button
+              type="button"
+              disabled={loading || !!error}
+              onClick={() => onRefund?.(sale)}
+              className="btn-outline w-full flex items-center justify-center gap-2 text-sm py-2 mt-2 border-red-500/40 text-red-300 hover:bg-red-950/20"
+            >
+              <RotateCcw size={16} /> Refund This Invoice
+            </button>
+          )}
+          {sale.refunded_at && (
+            <p className="text-xs text-red-400 text-center mt-2">
+              Refunded on {formatDateTime(sale.refunded_at)}
+            </p>
+          )}
+
+          {inventoryUsage.length > 0 && (
           <p className="text-[11px] text-luxury-muted mt-3">
             Inventory used: {inventoryUsage.map((u) => `${u.name} (−${u.total}${u.stock_type === 'meter' ? 'm' : ' pcs'})`).join(', ')}
           </p>

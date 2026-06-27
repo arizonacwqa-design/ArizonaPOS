@@ -1,6 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-
-const SCAN_TIMEOUT = 100;
+import { SCAN_TIMEOUT } from '../lib/constants';
 
 export function useBarcodeScanner(onScan) {
   const bufferRef = useRef('');

@@ -81,6 +81,8 @@ export default function Bookings() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const isAdmin = useAuthStore((s) => s.isAdmin());
 
   useEffect(() => {
     loadBookings();
@@ -228,6 +230,19 @@ export default function Bookings() {
     loadBookings();
   }
 
+  async function archiveOldBookings() {
+    setArchiving(true);
+    setMessage('');
+    const { data, error } = await supabase.rpc('archive_old_bookings', { p_days: 90 });
+    setArchiving(false);
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setMessage(`Archived ${data} old booking(s).`);
+      loadBookings();
+    }
+  }
+
   function moveDay(amount) {
     const date = startOfLocalDay(selectedDate);
     date.setDate(date.getDate() + amount);
@@ -277,10 +292,22 @@ export default function Bookings() {
           </p>
         </div>
         {!showForm && (
-          <button type="button" onClick={openNew} className="btn-gold inline-flex items-center gap-2">
-            <Plus size={18} />
-            New Booking
-          </button>
+          <>
+            <button type="button" onClick={openNew} className="btn-gold inline-flex items-center gap-2">
+              <Plus size={18} />
+              New Booking
+            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={archiveOldBookings}
+                disabled={archiving}
+                className="btn-outline inline-flex items-center gap-2 text-xs"
+              >
+                {archiving ? 'Archiving...' : 'Archive Old'}
+              </button>
+            )}
+          </>
         )}
       </header>
 
