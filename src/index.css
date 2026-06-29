@@ -169,7 +169,7 @@
   }
 }
 
-/* Print: thermal (80mm) — default */
+/* ── Print: thermal (80mm) / A4 / Reports ── */
 @media print {
   @page {
     size: auto;
@@ -178,25 +178,14 @@
 
   html, body {
     height: auto;
-    overflow: hidden;
+    overflow: visible;
     margin: 0;
     padding: 0;
   }
 
-  /* Hide ALL elements using visibility (ancestors keep their box so
-     children can override visibility). Also collapse hidden elements
-     to 0 height to prevent blank pages from paginating tall hidden content. */
+  /* Hide everything — children can override with visibility:visible */
   body * {
-    visibility: hidden !important;
-    height: 0 !important;
-    min-height: 0 !important;
-    max-height: 0 !important;
-    overflow: hidden !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: 0 !important;
-    font-size: 0 !important;
-    line-height: 0 !important;
+    visibility: hidden;
   }
 
   .no-print {
@@ -208,16 +197,7 @@
   body.print-thermal #thermal-invoice *,
   body:not(.print-a4) #thermal-invoice,
   body:not(.print-a4) #thermal-invoice * {
-    visibility: visible !important;
-    height: auto !important;
-    min-height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    margin: revert !important;
-    padding: revert !important;
-    border: revert !important;
-    font-size: revert !important;
-    line-height: revert !important;
+    visibility: visible;
   }
 
   body.print-thermal #thermal-invoice,
@@ -226,29 +206,19 @@
     left: 0;
     top: 0;
     width: 80mm;
+    font-size: 11px;
     color: #000 !important;
     background: #fff !important;
-    page-break-after: avoid;
   }
 
-  /* ── A4 Invoice ── */
+  /* ── A4 Invoice (sell bill) ── */
   body.print-a4 #a4-invoice,
   body.print-a4 #a4-invoice * {
-    visibility: visible !important;
-    height: auto !important;
-    min-height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    margin: revert !important;
-    padding: revert !important;
-    border: revert !important;
-    font-size: revert !important;
-    line-height: revert !important;
+    visibility: visible;
   }
 
-  body.print-a4 #thermal-invoice,
-  body.print-a4 #thermal-invoice * {
-    display: none !important;
+  body.print-a4 #thermal-invoice {
+    visibility: hidden !important;
   }
 
   body.print-a4 #a4-invoice {
@@ -258,47 +228,38 @@
     width: 100%;
     color: #000 !important;
     background: #fff !important;
-    page-break-after: avoid;
+    box-sizing: border-box;
   }
 
   /* ── Purchase Report ── */
+  body.printing-purchase-report * {
+    visibility: hidden;
+  }
+
   body.printing-purchase-report [data-print-area="purchase-report"],
   body.printing-purchase-report [data-print-area="purchase-report"] * {
-    visibility: visible !important;
-    height: auto !important;
-    min-height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    margin: revert !important;
-    padding: revert !important;
-    border: revert !important;
-    font-size: revert !important;
-    line-height: revert !important;
+    visibility: visible;
   }
+
   body.printing-purchase-report [data-print-area="purchase-report"] {
     position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
+    left: 10mm;
+    top: 10mm;
+    right: 10mm;
     color: #000 !important;
     background: #fff !important;
-    padding: 16px;
   }
 
   /* ── Purchase Bill ── */
+  body.printing-purchase-bill * {
+    visibility: hidden;
+  }
+
   body.printing-purchase-bill #purchase-bill-print,
   body.printing-purchase-bill #purchase-bill-print * {
-    visibility: visible !important;
-    height: auto !important;
-    min-height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    margin: revert !important;
-    padding: revert !important;
-    border: revert !important;
-    font-size: revert !important;
-    line-height: revert !important;
+    visibility: visible;
   }
+
   body.printing-purchase-bill #purchase-bill-print {
     display: block !important;
     position: absolute;
@@ -307,30 +268,26 @@
     width: 100%;
     color: #000 !important;
     background: #fff !important;
-    padding: 24px 10px;
+    padding: 10mm;
+    box-sizing: border-box;
   }
 
   /* ── Refund Report ── */
+  body.printing-refund-report * {
+    visibility: hidden;
+  }
+
   body.printing-refund-report [data-print-area="refund-report"],
   body.printing-refund-report [data-print-area="refund-report"] * {
-    visibility: visible !important;
-    height: auto !important;
-    min-height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    margin: revert !important;
-    padding: revert !important;
-    border: revert !important;
-    font-size: revert !important;
-    line-height: revert !important;
+    visibility: visible;
   }
+
   body.printing-refund-report [data-print-area="refund-report"] {
     position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
+    left: 10mm;
+    top: 10mm;
+    right: 10mm;
     color: #000 !important;
     background: #fff !important;
-    padding: 16px;
   }
 }
