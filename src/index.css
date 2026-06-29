@@ -254,6 +254,7 @@
     visibility: visible;
   }
   body.printing-purchase-bill #purchase-bill-print {
+    display: block !important;
     position: absolute;
     left: 0;
     top: 0;
