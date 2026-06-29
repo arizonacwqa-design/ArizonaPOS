@@ -177,19 +177,25 @@
   }
 
   html, body {
-    height: auto;
+    height: 0;
     overflow: hidden;
+    margin: 0;
+    padding: 0;
   }
 
   body * {
-    visibility: hidden;
+    display: none !important;
+  }
+
+  .no-print {
+    display: none !important;
   }
 
   body.print-thermal #thermal-invoice,
   body.print-thermal #thermal-invoice *,
   body:not(.print-a4) #thermal-invoice,
   body:not(.print-a4) #thermal-invoice * {
-    visibility: visible;
+    display: block !important;
   }
 
   body.print-thermal #thermal-invoice,
@@ -201,17 +207,15 @@
     font-size: 11px;
     color: #000 !important;
     background: #fff !important;
-    page-break-after: avoid;
-    page-break-before: avoid;
   }
 
   body.print-a4 #a4-invoice,
   body.print-a4 #a4-invoice * {
-    visibility: visible;
+    display: block !important;
   }
 
   body.print-a4 #thermal-invoice {
-    visibility: hidden !important;
+    display: none !important;
   }
 
   body.print-a4 #a4-invoice {
@@ -221,20 +225,11 @@
     width: 100%;
     color: #000 !important;
     background: #fff !important;
-    page-break-after: avoid;
-    page-break-before: avoid;
   }
 
-  .no-print {
-    display: none !important;
-  }
-
-  body.printing-purchase-report * {
-    visibility: hidden;
-  }
   body.printing-purchase-report [data-print-area="purchase-report"],
   body.printing-purchase-report [data-print-area="purchase-report"] * {
-    visibility: visible;
+    display: block !important;
   }
   body.printing-purchase-report [data-print-area="purchase-report"] {
     position: absolute;
@@ -246,15 +241,11 @@
     padding: 16px;
   }
 
-  body.printing-purchase-bill * {
-    visibility: hidden;
-  }
   body.printing-purchase-bill #purchase-bill-print,
   body.printing-purchase-bill #purchase-bill-print * {
-    visibility: visible;
+    display: block !important;
   }
   body.printing-purchase-bill #purchase-bill-print {
-    display: block !important;
     position: absolute;
     left: 0;
     top: 0;
@@ -264,12 +255,9 @@
     padding: 24px 10px;
   }
 
-  body.printing-refund-report * {
-    visibility: hidden;
-  }
   body.printing-refund-report [data-print-area="refund-report"],
   body.printing-refund-report [data-print-area="refund-report"] * {
-    visibility: visible;
+    display: block !important;
   }
   body.printing-refund-report [data-print-area="refund-report"] {
     position: absolute;
