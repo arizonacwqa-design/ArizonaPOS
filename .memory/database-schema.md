@@ -53,7 +53,7 @@ Affected rule files: <links to rules/*.md>
 
 ## Overview
 
-Supabase (PostgreSQL) database with **10 tables**, **Row Level Security**, **6 functions**, **3 triggers**, **2 views**, and **1 sequence**.
+Supabase (PostgreSQL) database with **11 tables**, **Row Level Security**, **9 functions**, **5 triggers**, **2 views**, and **1 sequence**.
 
 ---
 
@@ -75,10 +75,14 @@ auth.users
 inventory_items
     ├─── services.inventory_item_id
     ├─── sale_items.inventory_item_id
-    └─── inventory_purchases.inventory_item_id
+    ├─── inventory_purchases.inventory_item_id
+    └─── purchase_items.inventory_item_id
 
 services
     └─── sale_items.service_id
+
+inventory_purchases
+    └─── purchase_items.purchase_id
 
 sales
     ├─── sale_items.sale_id
@@ -544,6 +548,7 @@ Located in `supabase/migrations/`. Run in order:
 | 13 | `013_data_purge.sql` | Data maintenance | `archive_inactive_services()`, `archive_old_customers()` functions |
 | 14 | `014_partial_refund.sql` | Partial refund | `process_partial_refund()` RPC, partial refund support |
 | 15 | `015_licenses.sql` | License keys | `licenses` table, RLS, grants |
+| 16 | `016_multi_item_purchases.sql` | Multi-item purchases | `purchase_items` table, modified triggers for multi-item support |
 
 Migrations 006-015 address critical bugs & features:
 - **Bug 1**: Stock race condition → `SELECT ... FOR UPDATE` + CHECK constraint

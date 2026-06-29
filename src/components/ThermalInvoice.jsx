@@ -149,6 +149,9 @@ const ThermalInvoice = forwardRef(function ThermalInvoice(
           <p className="text-center text-[10px]">WhatsApp: {companyInfo.whatsapp}</p>
         )}
       </div>
+      <hr className="border-dashed border-black my-2" />
+      <p className="text-center text-[8px] text-gray-500">Powered by Friend's &amp; Co Software</p>
+      <p className="text-center text-[8px] text-gray-500">&copy; 2025 Arizona Car World</p>
     </div>
   );
 });

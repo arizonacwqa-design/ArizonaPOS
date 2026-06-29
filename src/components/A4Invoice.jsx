@@ -132,6 +132,8 @@ const A4Invoice = forwardRef(function A4Invoice(
       <footer className="mt-12 pt-6 border-t text-center text-xs text-gray-500">
         <p>Thank you for choosing {companyInfo.name}</p>
         {companyInfo.whatsapp && <p className="mt-1">WhatsApp: {companyInfo.whatsapp}</p>}
+        <p className="mt-3 text-[10px] text-gray-400">Powered by Friend's &amp; Co Software</p>
+        <p className="text-[10px] text-gray-400">&copy; 2025 Arizona Car World</p>
       </footer>
     </div>
   );

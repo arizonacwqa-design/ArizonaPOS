@@ -2,6 +2,12 @@ export const config = { auth: false };
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
 interface LicenseRow {
   id: string;
   license_key: string;
@@ -20,26 +26,30 @@ interface ResponseBody {
   message: string;
 }
 
+function json(body: ResponseBody, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req: Request): Promise<Response> => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ valid: false, message: "Only POST allowed" }), {
-      status: 405,
-      headers: { "Content-Type": "application/json" },
-    });
+    return json({ valid: false, message: "Only POST allowed" }, 405);
   }
 
   try {
     const { license_key, machine_id }: RequestBody = await req.json();
 
     if (!license_key || !machine_id) {
-      return new Response(JSON.stringify({ valid: false, message: "license_key and machine_id are required" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+      return json({ valid: false, message: "license_key and machine_id are required" }, 400);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const headers = {
@@ -58,21 +68,13 @@ serve(async (req: Request): Promise<Response> => {
     const rows: LicenseRow[] = await res.json();
 
     if (rows.length === 0) {
-      const body: ResponseBody = { valid: false, message: "License key not found" };
-      return new Response(JSON.stringify(body), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+      return json({ valid: false, message: "License key not found" });
     }
 
     const license = rows[0];
 
     if (!license.is_active) {
-      const body: ResponseBody = { valid: false, message: "License is not active" };
-      return new Response(JSON.stringify(body), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+      return json({ valid: false, message: "License is not active" });
     }
 
     if (license.machine_id === null) {
@@ -90,31 +92,15 @@ serve(async (req: Request): Promise<Response> => {
         throw new Error(`Failed to bind machine: ${updateRes.statusText}`);
       }
 
-      const body: ResponseBody = { valid: true, message: "License activated on this machine" };
-      return new Response(JSON.stringify(body), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+      return json({ valid: true, message: "License activated on this machine" });
     }
 
     if (license.machine_id === machine_id) {
-      const body: ResponseBody = { valid: true, message: "License is valid" };
-      return new Response(JSON.stringify(body), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+      return json({ valid: true, message: "License is valid" });
     }
 
-    const body: ResponseBody = { valid: false, message: "License already activated on another machine" };
-    return new Response(JSON.stringify(body), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return json({ valid: false, message: "License already activated on another machine" });
   } catch (err) {
-    const body: ResponseBody = { valid: false, message: `Server error: ${err.message}` };
-    return new Response(JSON.stringify(body), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return json({ valid: false, message: `Server error: ${err.message}` }, 500);
   }
 });

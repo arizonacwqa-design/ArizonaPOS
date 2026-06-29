@@ -1,11 +1,23 @@
 import { useEffect, useState } from 'react';
+import { Plus, X, Printer, ChevronDown, ChevronRight, Search } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatCurrency, formatDate, formatStock } from '@/lib/format';
-import { startOfMonth, parseISO } from 'date-fns';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { getProductByBarcode } from '@/lib/productService';
 import LoadingSpinner from '../LoadingSpinner';
+import PurchasePrint from '@/components/PurchasePrint';
+
+function emptyRow() {
+  return {
+    key: crypto.randomUUID(),
+    inventory_item_id: '',
+    searchText: '',
+    showDropdown: false,
+    quantity: 1,
+    unit_cost: 0,
+  };
+}
 
 export default function Purchases() {
   const { user } = useAuthStore();
@@ -16,17 +28,14 @@ export default function Purchases() {
     bill_number: '',
     supplier_name: '',
     purchase_date: new Date().toISOString().split('T')[0],
-    inventory_item_id: '',
-    quantity_added: 0,
-    meters_added: 0,
-    unit_cost: 0,
     notes: '',
   });
+  const [rows, setRows] = useState([emptyRow()]);
   const [message, setMessage] = useState('');
   const [dataLoading, setDataLoading] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [searchText, setSearchText] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [expandedBills, setExpandedBills] = useState({});
+  const [printBill, setPrintBill] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -34,24 +43,22 @@ export default function Purchases() {
 
   async function loadData() {
     setDataLoading(true);
-    const monthStart = startOfMonth(new Date()).toISOString().split('T')[0];
     const [itemsRes, purchasesRes] = await Promise.all([
       supabase.from('inventory_items').select('*').order('name'),
       supabase
         .from('inventory_purchases')
-        .select('*, inventory_items(name, stock_type, unit_label)')
+        .select('*, purchase_items(*)')
         .order('created_at', { ascending: false })
         .limit(100),
     ]);
     setItems(itemsRes.data || []);
     const list = purchasesRes.data || [];
     setPurchases(list);
-    const monthStartDate = startOfMonth(new Date());
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
     const expense = list
-      .filter((p) => {
-        const purchaseDate = parseISO(p.purchase_date);
-        return purchaseDate >= monthStartDate;
-      })
+      .filter((p) => new Date(p.purchase_date) >= monthStart)
       .reduce((sum, p) => sum + Number(p.total_cost || 0), 0);
     setMonthExpense(expense);
     setDataLoading(false);
@@ -70,79 +77,116 @@ export default function Purchases() {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    const lastCost = lastPurchase?.unit_cost || 0;
-    setForm((prev) => ({
-      ...prev,
-      inventory_item_id: product.id,
-      unit_cost: lastCost,
-    }));
-    setSearchText(product.name);
-    setMessage(
-      `Scanned: ${product.name} — Stock: ${product.stock_type === 'meter' ? product.current_stock + 'm' : product.current_stock + ' ' + (product.unit_label || 'pcs')} — Last cost: ${formatCurrency(lastCost)}`
-    );
+    setRows((prev) => {
+      const next = [...prev];
+      const existing = next.find((r) => r.inventory_item_id === product.id);
+      if (existing) {
+        existing.quantity = Number(existing.quantity) + 1;
+      } else {
+        next.push({
+          key: crypto.randomUUID(),
+          inventory_item_id: product.id,
+          searchText: product.name,
+          showDropdown: false,
+          quantity: 1,
+          unit_cost: lastPurchase?.unit_cost || 0,
+        });
+      }
+      return next;
+    });
+    setMessage(`Scanned: ${product.name}`);
   });
 
-  const selectedItem = items.find((i) => i.id === form.inventory_item_id);
-  const qtyAdded =
-    selectedItem?.stock_type === 'meter'
-      ? Number(form.meters_added) || 0
-      : Number(form.quantity_added) || 0;
-  const estimatedTotal = qtyAdded * (Number(form.unit_cost) || 0);
-  const filteredItems = searchText.trim()
-    ? items.filter((i) =>
-        i.name.toLowerCase().includes(searchText.trim().toLowerCase()) ||
-        (i.barcode && i.barcode.includes(searchText.trim()))
-      )
-    : [];
+  function addRow() {
+    setRows((prev) => [...prev, emptyRow()]);
+  }
+
+  function removeRow(key) {
+    setRows((prev) => prev.filter((r) => r.key !== key));
+  }
+
+  function updateRow(key, patch) {
+    setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  }
+
+  const grandTotal = rows.reduce((sum, r) => {
+    const qty = Number(r.quantity) || 0;
+    const cost = Number(r.unit_cost) || 0;
+    return sum + qty * cost;
+  }, 0);
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!form.inventory_item_id || !form.supplier_name.trim()) {
-      setMessage('Select item and enter supplier name');
+    if (!form.supplier_name.trim()) {
+      setMessage('Enter supplier name');
       return;
     }
-    if (qtyAdded <= 0) {
-      setMessage('Enter quantity or meters added');
+    const validRows = rows.filter((r) => r.inventory_item_id && (Number(r.quantity) || 0) > 0);
+    if (validRows.length === 0) {
+      setMessage('Add at least one item with quantity');
       return;
     }
-
     setLoading(true);
-    const payload = {
-      bill_number: form.bill_number.trim() || null,
-      supplier_name: form.supplier_name.trim(),
-      purchase_date: form.purchase_date,
-      inventory_item_id: form.inventory_item_id,
-      quantity_added: selectedItem?.stock_type === 'quantity' ? qtyAdded : 0,
-      meters_added: selectedItem?.stock_type === 'meter' ? qtyAdded : 0,
-      unit_cost: Number(form.unit_cost) || 0,
-      total_cost: estimatedTotal,
-      notes: form.notes,
-      created_by: user?.id,
-    };
-
-    const { error } = await supabase.from('inventory_purchases').insert(payload);
-    setLoading(false);
-
-    if (error) {
-      if (error.message?.includes('unique') || error.code === '23505') {
+    const { data: purchase, error: headerErr } = await supabase
+      .from('inventory_purchases')
+      .insert({
+        bill_number: form.bill_number.trim() || null,
+        supplier_name: form.supplier_name.trim(),
+        purchase_date: form.purchase_date,
+        notes: form.notes || null,
+        created_by: user?.id,
+      })
+      .select()
+      .single();
+    if (headerErr) {
+      setLoading(false);
+      if (headerErr.message?.includes('unique') || headerErr.code === '23505') {
         setMessage('Bill number already exists. Use a unique bill number or leave it blank.');
       } else {
-        setMessage(error.message);
+        setMessage(headerErr.message);
       }
-    } else {
-      setMessage('Purchase recorded — stock increased automatically!');
-      setForm({
-        bill_number: '',
-        supplier_name: '',
-        purchase_date: new Date().toISOString().split('T')[0],
-        inventory_item_id: '',
-        quantity_added: 0,
-        meters_added: 0,
-        unit_cost: 0,
-        notes: '',
-      });
-      loadData();
+      return;
     }
+    const itemsToInsert = validRows.map((r) => {
+      const item = items.find((i) => i.id === r.inventory_item_id);
+      const qty = Number(r.quantity) || 0;
+      const cost = Number(r.unit_cost) || 0;
+      return {
+        purchase_id: purchase.id,
+        inventory_item_id: r.inventory_item_id,
+        item_name: item?.name || '',
+        quantity: qty,
+        unit_cost: cost,
+        total_cost: qty * cost,
+      };
+    });
+    const { error: itemsErr } = await supabase.from('purchase_items').insert(itemsToInsert);
+    setLoading(false);
+    if (itemsErr) {
+      setMessage(itemsErr.message);
+      return;
+    }
+    setMessage('Purchase recorded — stock increased automatically!');
+    setForm({
+      bill_number: '',
+      supplier_name: '',
+      purchase_date: new Date().toISOString().split('T')[0],
+      notes: '',
+    });
+    setRows([emptyRow()]);
+    loadData();
+  }
+
+  function toggleBill(id) {
+    setExpandedBills((prev) => ({ ...prev, [id]: !prev[id] }));
+  }
+
+  function handlePrint(bill) {
+    setPrintBill(bill);
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setPrintBill(null), 500);
+    }, 100);
   }
 
   if (dataLoading) return <LoadingSpinner message="Loading purchases..." />;
@@ -152,7 +196,7 @@ export default function Purchases() {
       <header className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-display font-bold text-gold-400">Inventory Purchases</h1>
         <p className="text-luxury-muted">
-          Stock IN with bill number, supplier, date, and expense tracking
+          Multi-item stock IN with bill number, supplier, date
         </p>
       </header>
 
@@ -163,7 +207,8 @@ export default function Purchases() {
 
       <form onSubmit={handleSubmit} className="card-luxury mb-8">
         <h2 className="text-lg text-gold-400 mb-4">New Purchase Entry</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div>
             <label className="label-luxury">Bill Number</label>
             <input
@@ -191,175 +236,236 @@ export default function Purchases() {
               onChange={(e) => setForm({ ...form, purchase_date: e.target.value })}
             />
           </div>
-          <div className="md:col-span-2">
-            <label className="label-luxury">Search Item or Scan Barcode *</label>
-            <div className="relative">
-              <input
-                className="input-luxury"
-                value={searchText}
-                onChange={(e) => {
-                  setSearchText(e.target.value);
-                  setShowDropdown(true);
-                  setForm((prev) => ({ ...prev, inventory_item_id: '' }));
-                }}
-                onFocus={() => setShowDropdown(true)}
-                onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-                placeholder="Type name or scan barcode..."
-                required
-              />
-              {showDropdown && filteredItems.length > 0 && (
-                <div className="absolute z-10 mt-1 w-full rounded-xl border border-luxury-border bg-luxury-charcoal shadow-lg max-h-48 overflow-y-auto">
-                  {filteredItems.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onMouseDown={() => {
-                        setForm((prev) => ({
-                          ...prev,
-                          inventory_item_id: item.id,
-                          unit_cost: 0,
-                        }));
-                        setSearchText(item.name);
-                        setShowDropdown(false);
-                        supabase
-                          .from('inventory_purchases')
-                          .select('unit_cost')
-                          .eq('inventory_item_id', item.id)
-                          .order('created_at', { ascending: false })
-                          .limit(1)
-                          .maybeSingle()
-                          .then(({ data }) => {
-                            if (data?.unit_cost) {
-                              setForm((prev) => ({ ...prev, unit_cost: data.unit_cost }));
-                            }
-                          });
-                      }}
-                      className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-gold-600/15 hover:text-gold-300 border-b border-luxury-border/50 last:border-b-0"
-                    >
-                      <span className="font-medium">{item.name}</span>
-                      <span className="text-luxury-muted ml-2 text-xs">{formatStock(item)}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            {selectedItem && (
-              <p className="mt-1.5 text-xs text-amber-300">
-                Current Stock: <span className="font-semibold">{formatStock(selectedItem)}</span>
-              </p>
-            )}
-          </div>
+        </div>
 
-          {selectedItem?.stock_type === 'meter' ? (
-            <div>
-              <label className="label-luxury">Meters Added</label>
-              <input
-                type="number"
-                step="0.1"
-                min="0"
-                className="input-luxury"
-                value={form.meters_added}
-                onChange={(e) => setForm({ ...form, meters_added: e.target.value })}
-              />
-            </div>
-          ) : selectedItem ? (
-            <div>
-              <label className="label-luxury">Quantity Added (pcs)</label>
-              <input
-                type="number"
-                min="0"
-                className="input-luxury"
-                value={form.quantity_added}
-                onChange={(e) => setForm({ ...form, quantity_added: e.target.value })}
-              />
-            </div>
-          ) : null}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-luxury-muted border-b border-luxury-border">
+                <th className="text-left py-2 px-2 w-1/2">Item</th>
+                <th className="text-center py-2 px-2 w-[100px]">Quantity</th>
+                <th className="text-center py-2 px-2 w-[120px]">Unit Cost</th>
+                <th className="text-right py-2 px-2 w-[120px]">Total</th>
+                <th className="py-2 px-2 w-10" />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => {
+                const qty = Number(row.quantity) || 0;
+                const cost = Number(row.unit_cost) || 0;
+                const rowTotal = qty * cost;
+                const selectedItem = items.find((i) => i.id === row.inventory_item_id);
+                const filteredItems = row.searchText.trim()
+                  ? items.filter((i) =>
+                      i.name.toLowerCase().includes(row.searchText.trim().toLowerCase()) ||
+                      (i.barcode && i.barcode.includes(row.searchText.trim()))
+                    )
+                  : [];
+                return (
+                  <tr key={row.key} className="border-b border-luxury-border/30">
+                    <td className="py-1.5 px-2">
+                      <div className="relative">
+                        <input
+                          className="input-luxury text-sm py-2"
+                          value={row.searchText}
+                          onChange={(e) => {
+                            updateRow(row.key, {
+                              searchText: e.target.value,
+                              showDropdown: true,
+                              inventory_item_id: '',
+                            });
+                          }}
+                          onFocus={() => updateRow(row.key, { showDropdown: true })}
+                          onBlur={() => setTimeout(() => updateRow(row.key, { showDropdown: false }), 200)}
+                          placeholder="Search item or scan barcode..."
+                        />
+                        {row.showDropdown && filteredItems.length > 0 && (
+                          <div className="absolute z-10 mt-1 w-full rounded-xl border border-luxury-border bg-luxury-charcoal shadow-lg max-h-40 overflow-y-auto">
+                            {filteredItems.map((item) => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onMouseDown={() => {
+                                  updateRow(row.key, {
+                                    inventory_item_id: item.id,
+                                    searchText: item.name,
+                                    showDropdown: false,
+                                  });
+                                  supabase
+                                    .from('inventory_purchases')
+                                    .select('unit_cost')
+                                    .eq('inventory_item_id', item.id)
+                                    .order('created_at', { ascending: false })
+                                    .limit(1)
+                                    .maybeSingle()
+                                    .then(({ data }) => {
+                                      if (data?.unit_cost) {
+                                        updateRow(row.key, { unit_cost: data.unit_cost });
+                                      }
+                                    });
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gold-600/15 hover:text-gold-300 border-b border-luxury-border/50 last:border-b-0"
+                              >
+                                <span className="font-medium">{item.name}</span>
+                                <span className="text-luxury-muted ml-2 text-xs">{formatStock(item)}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {selectedItem && (
+                          <p className="mt-0.5 text-[11px] text-amber-300">
+                            Stock: {formatStock(selectedItem)}
+                          </p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-1.5 px-2">
+                      <input
+                        type="number"
+                        min="0"
+                        step={selectedItem?.stock_type === 'meter' ? '0.1' : '1'}
+                        className="input-luxury text-sm py-2 text-center"
+                        value={row.quantity}
+                        onChange={(e) => updateRow(row.key, { quantity: e.target.value })}
+                      />
+                    </td>
+                    <td className="py-1.5 px-2">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="input-luxury text-sm py-2 text-center"
+                        value={row.unit_cost}
+                        onChange={(e) => updateRow(row.key, { unit_cost: e.target.value })}
+                      />
+                    </td>
+                    <td className="py-1.5 px-2 text-right font-medium text-gold-400">
+                      {formatCurrency(rowTotal)}
+                    </td>
+                    <td className="py-1.5 px-2">
+                      <button
+                        type="button"
+                        onClick={() => removeRow(row.key)}
+                        className="p-1 text-red-400 hover:text-red-300 hover:bg-red-950/30 rounded transition-colors"
+                      >
+                        <X size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
 
-          <div>
-            <label className="label-luxury">Unit Cost (QAR)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              className="input-luxury"
-              value={form.unit_cost}
-              onChange={(e) => setForm({ ...form, unit_cost: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="label-luxury">Total Cost (QAR)</label>
-            <input
-              className="input-luxury bg-luxury-black/50"
-              readOnly
-              value={formatCurrency(estimatedTotal)}
-            />
-          </div>
+        <button type="button" onClick={addRow} className="btn-outline text-sm mt-3 flex items-center gap-1.5">
+          <Plus size={16} /> Add Item
+        </button>
 
-          <div className="md:col-span-3">
-            <label className="label-luxury">Notes</label>
-            <textarea
-              className="input-luxury min-h-[80px]"
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            />
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-luxury-border">
+          <div className="text-sm text-luxury-muted">{rows.filter((r) => r.inventory_item_id).length} items</div>
+          <div className="text-xl font-bold text-gold-400">
+            Grand Total: {formatCurrency(grandTotal)}
           </div>
         </div>
 
+        <div className="mt-4">
+          <label className="label-luxury">Notes</label>
+          <textarea
+            className="input-luxury min-h-[60px]"
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          />
+        </div>
+
         {message && (
-          <p
-            className={`mt-4 text-sm ${
-              message.includes('recorded') ? 'text-green-400' : 'text-red-400'
-            }`}
-          >
+          <p className={`mt-3 text-sm ${message.includes('recorded') ? 'text-green-400' : 'text-red-400'}`}>
             {message}
           </p>
         )}
 
         <button type="submit" className="btn-gold mt-4" disabled={loading}>
-          {loading ? 'Saving...' : 'Add Purchase & Update Stock'}
+          {loading ? 'Saving...' : 'Save Purchase & Update Stock'}
         </button>
       </form>
 
       <div className="card-luxury">
         <h2 className="text-lg text-gold-400 mb-4">Purchase History</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-luxury-muted border-b border-luxury-border">
-                <th className="text-left py-3 px-2">Date</th>
-                <th className="text-left py-3 px-2">Bill #</th>
-                <th className="text-left py-3 px-2">Supplier</th>
-                <th className="text-left py-3 px-2">Item</th>
-                <th className="text-right py-3 px-2">Added</th>
-                <th className="text-right py-3 px-2">Cost</th>
-              </tr>
-            </thead>
-            <tbody>
-              {purchases.map((p) => (
-                <tr key={p.id} className="border-b border-luxury-border/50">
-                  <td className="py-3 px-2">{formatDate(p.purchase_date)}</td>
-                  <td className="py-3 px-2">{p.bill_number || '—'}</td>
-                  <td className="py-3 px-2">{p.supplier_name}</td>
-                  <td className="py-3 px-2">{p.inventory_items?.name}</td>
-                  <td className="py-3 px-2 text-right text-gold-400">
-                    {p.meters_added > 0 ? `${p.meters_added}m` : `${p.quantity_added} pcs`}
-                  </td>
-                  <td className="py-3 px-2 text-right">
-                    {formatCurrency(p.total_cost || 0)}
-                  </td>
-                </tr>
-              ))}
-              {purchases.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-luxury-muted">
-                    No purchases yet
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="space-y-2">
+          {purchases.map((p) => {
+            const billItems = p.purchase_items || [];
+            const billTotal = billItems.reduce((s, i) => s + Number(i.total_cost || 0), 0) || Number(p.total_cost || 0);
+            const isExpanded = expandedBills[p.id];
+            return (
+              <div key={p.id} className="border border-luxury-border rounded-xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => toggleBill(p.id)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-luxury-slate/50 hover:bg-luxury-slate transition-colors text-left"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    {isExpanded ? <ChevronDown size={16} className="shrink-0 text-gold-400" /> : <ChevronRight size={16} className="shrink-0 text-luxury-muted" />}
+                    <span className="text-sm font-medium truncate">{p.supplier_name}</span>
+                    <span className="text-xs text-luxury-muted shrink-0">{formatDate(p.purchase_date)}</span>
+                    {p.bill_number && <span className="text-xs text-luxury-muted shrink-0">#{p.bill_number}</span>}
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-sm font-semibold text-gold-400">{formatCurrency(billTotal)}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handlePrint(p); }}
+                      className="p-1.5 text-luxury-muted hover:text-gold-400 hover:bg-gold-600/10 rounded-lg transition-colors"
+                      title="Print A4"
+                    >
+                      <Printer size={16} />
+                    </button>
+                  </div>
+                </button>
+                {isExpanded && (
+                  <div className="px-4 pb-3 pt-1">
+                    {billItems.length > 0 ? (
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-luxury-muted text-xs border-b border-luxury-border/50">
+                            <th className="text-left py-2 px-2">Item</th>
+                            <th className="text-center py-2 px-2">Qty</th>
+                            <th className="text-center py-2 px-2">Unit Cost</th>
+                            <th className="text-right py-2 px-2">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {billItems.map((i) => (
+                            <tr key={i.id} className="border-b border-luxury-border/20">
+                              <td className="py-1.5 px-2">{i.item_name}</td>
+                              <td className="py-1.5 px-2 text-center">{Number(i.quantity)}</td>
+                              <td className="py-1.5 px-2 text-center">{formatCurrency(i.unit_cost)}</td>
+                              <td className="py-1.5 px-2 text-right text-gold-400">{formatCurrency(i.total_cost)}</td>
+                            </tr>
+                          ))}
+                          <tr className="font-semibold">
+                            <td colSpan={3} className="py-2 px-2 text-right text-gold-400">Grand Total</td>
+                            <td className="py-2 px-2 text-right text-gold-400">{formatCurrency(billTotal)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    ) : (
+                      <p className="text-xs text-luxury-muted py-2">
+                        {p.inventory_items?.name} &mdash; {p.meters_added > 0 ? `${p.meters_added}m` : `${p.quantity_added} pcs`} @ {formatCurrency(p.unit_cost)}
+                      </p>
+                    )}
+                    {p.notes && <p className="text-xs text-luxury-muted mt-2 italic">{p.notes}</p>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {purchases.length === 0 && (
+            <p className="text-center text-luxury-muted py-8">No purchases yet</p>
+          )}
         </div>
       </div>
+
+      {printBill && <PurchasePrint purchase={printBill} items={printBill.purchase_items || []} />}
     </div>
   );
 }

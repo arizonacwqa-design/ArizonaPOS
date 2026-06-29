@@ -166,8 +166,11 @@ export default function LicenseGate({ children }) {
           </div>
         </div>
 
-        <p className="text-center text-xs text-luxury-muted mt-6">
-          &copy; Arizona Car World. All rights reserved.
+        <p className="text-center text-[11px] text-luxury-muted/60 mt-6">
+          Friend's &amp; Co Software &mdash; Licensed Product
+        </p>
+        <p className="text-center text-[11px] text-luxury-muted/60">
+          &copy; 2025 All Rights Reserved
         </p>
       </div>
     </div>

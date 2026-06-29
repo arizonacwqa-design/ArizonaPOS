@@ -20,7 +20,7 @@ Desktop POS and inventory management system for **Arizona Car World**, an automo
 |---------|-------------|
 | **POS Billing** | 4-step workflow: Customer/Vehicle → Services → Inventory Usage → Cart/Checkout |
 | **Inventory** | Dual stock types: meter (PPF/Tint rolls) and quantity (bottles, pcs). Barcode search. Pagination. |
-| **Purchases** | Stock IN with bill#, supplier, date. Auto-stock increase via DB trigger. Barcode scan. |
+| **Purchases** | Multi-item stock IN with bill#, supplier, date. Auto-stock increase via DB triggers. Barcode scan. Collapsible bill history with A4 print. |
 | **Services Catalog** | CRUD services, link to inventory for auto-deduction on sale. Active/inactive toggle. |
 | **Reports** | 11 tabs: Daily/Monthly Sales, Search Bills, Vehicle History, Expenses, Inventory, Low Stock, Top Services, Inventory Usage, Employee Sales, Purchase Reports |
 | **Dashboard** | Daily/monthly sales, net profit, low stock alerts, 7-day chart, top services, top inventory usage |
@@ -80,7 +80,7 @@ ArizonaPOS/
 │   ├── ErrorBoundary.jsx
 │   ├── LoadingSpinner.jsx
 │   ├── pages/             # 12 page components
-│   ├── components/        # 19 reusable components
+│   ├── components/        # 20 reusable components
 │   ├── lib/               # 16 utility modules
 │   ├── store/             # 3 Zustand stores
 │   └── hooks/             # useBarcodeScanner

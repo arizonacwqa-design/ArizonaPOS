@@ -5,6 +5,10 @@ All notable changes to the Arizona Car World POS system.
 ## [Unreleased]
 
 ### Added
+- **Multi-item Purchases**: Redesigned Purchases page with per-bill item rows, grand total, collapsible history, A4 print
+- **Migration 016**: `purchase_items` table, modified triggers for multi-item stock-in
+- **PurchasePrint component**: A4 print layout for purchase bills
+- **Reports**: Multi-item view in purchase report (daily/monthly/range)
 - **License Gate system**: Full-screen license activation on app launch (`LicenseGate.jsx`)
 - **verify-license Edge Function**: Supabase Edge Function for license key validation + machine binding
 - **Migration 015**: `licenses` table with RLS for license key management

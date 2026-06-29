@@ -80,8 +80,14 @@ export default function Layout() {
           <div className="w-10" aria-hidden />
         </header>
 
-        <main className="flex-1 overflow-auto">
-          <Outlet />
+        <main className="flex-1 overflow-auto flex flex-col">
+          <div className="flex-1">
+            <Outlet />
+          </div>
+          <footer className="text-center text-[11px] text-luxury-muted/50 py-3 select-none">
+            &copy; 2025 Arizona Car World. All rights reserved.<br />
+            Powered by Friend's &amp; Co Software
+          </footer>
         </main>
       </div>
     </div>
