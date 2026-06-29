@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 const LS_KEY = 'acw_license_key';
 const LS_MACHINE = 'acw_machine_id';
-const VERIFY_URL = 'https://vdjhwmdzbjztiqhyrmai.supabase.co/functions/v1/verify-license';
+const VERIFY_URL = import.meta.env.VITE_LICENSE_VERIFY_URL || 'https://vdjhwmdzbjztiqhyrmai.supabase.co/functions/v1/verify-license';
 
 function generateMachineId() {
   return crypto.randomUUID();

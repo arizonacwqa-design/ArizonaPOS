@@ -53,13 +53,15 @@ Affected rule files: <links to rules/*.md>
 
 ## Overview
 
-Supabase (PostgreSQL) database with **9 tables**, **Row Level Security**, **6 functions**, **3 triggers**, **2 views**, and **1 sequence**.
+Supabase (PostgreSQL) database with **10 tables**, **Row Level Security**, **6 functions**, **3 triggers**, **2 views**, and **1 sequence**.
 
 ---
 
 ## Entity Relationship Diagram (Logical)
 
 ```
+licenses (standalone — no FK to auth.users)
+
 auth.users
     │
     └─── profiles (extends auth.users with role)
@@ -369,7 +371,7 @@ Appointment scheduling with status workflow.
 ## Keys
 
 ### Primary Keys
-All 9 tables use UUID primary keys with `DEFAULT gen_random_uuid()`.
+All 10 tables use UUID primary keys with `DEFAULT gen_random_uuid()`.
 
 ### Unique Constraints
 | Table | Column(s) | Type | Notes |
@@ -421,6 +423,39 @@ Foreign key columns for optional relations are nullable (SET NULL behavior).
 | `bookings_assigned_to_idx` | bookings | assigned_to | B-tree | Filter by staff |
 
 No indexes on `sales` or `sale_items` tables — relies on PK lookups and sequential scans (acceptable at current data volumes).
+
+---
+
+### 10. `licenses`
+
+License keys for application activation and machine binding.
+
+| Column | Type | Constraints | Notes |
+|--------|------|-------------|-------|
+| id | UUID | PK, DEFAULT gen_random_uuid() | |
+| license_key | TEXT | NOT NULL, UNIQUE | The license key entered by user |
+| is_active | BOOLEAN | NOT NULL, DEFAULT true | Soft disable without deleting |
+| machine_id | TEXT | nullable | Bound on first activation |
+| activated_at | TIMESTAMPTZ | nullable | Timestamp of first activation |
+| created_at | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() | |
+| updated_at | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() | |
+
+**Row Level Security**:
+| Policy | Action | Scope |
+|--------|--------|-------|
+| `licenses_select_authenticated` | SELECT | All authenticated |
+| `licenses_insert_admin` | INSERT | Admin only |
+| `licenses_update_admin` | UPDATE | Admin only |
+
+**Note**: Edge Function `verify-license` uses service_role key (bypasses RLS) for machine binding. Admin CRUD uses RLS.
+
+---
+
+## Relations (Foreign Keys)
+
+**licenses** is standalone — no foreign keys to other tables.
+
+The 9 business tables maintain the FK relationships listed below:
 
 ---
 
@@ -484,6 +519,7 @@ WHERE COALESCE(si.inventory_deducted, 0) > 0;
 | customers | All authenticated | All authenticated | All authenticated | — |
 | operating_expenses | All authenticated | Admin | Admin | Admin |
 | bookings | All authenticated | Own/admin | Owner/assignee/admin | Admin |
+| licenses | All authenticated | Admin | Admin | — |
 
 ---
 
@@ -506,8 +542,10 @@ Located in `supabase/migrations/`. Run in order:
 | 11 | `011_booking_cleanup.sql` | Booking cleanup | `archive_old_bookings()` function |
 | 12 | `012_refund_system.sql` | Full refund system | Refund columns on `sales`, `refund_log` table, `process_refund()` RPC, `reverse_stock_for_sale()` |
 | 13 | `013_data_purge.sql` | Data maintenance | `archive_inactive_services()`, `archive_old_customers()` functions |
+| 14 | `014_partial_refund.sql` | Partial refund | `process_partial_refund()` RPC, partial refund support |
+| 15 | `015_licenses.sql` | License keys | `licenses` table, RLS, grants |
 
-Migrations 006-013 address critical bugs & features:
+Migrations 006-015 address critical bugs & features:
 - **Bug 1**: Stock race condition → `SELECT ... FOR UPDATE` + CHECK constraint
 - **Bug 3**: RLS gaps on sales → granular policies
 - **Bug 5**: Non-atomic backup restore → `restore_backup()` RPC
@@ -527,6 +565,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.operating_expenses TO authenticat
 GRANT SELECT, INSERT, UPDATE ON public.customers TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.bookings TO authenticated;
 GRANT SELECT ON public.refund_log TO authenticated;
+GRANT SELECT ON public.licenses TO authenticated;
+GRANT INSERT, UPDATE ON public.licenses TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_sale(jsonb, jsonb, jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.restore_backup(jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.archive_old_bookings(integer) TO authenticated;

@@ -3,43 +3,39 @@
 ## System Architecture
 
 ```
-┌──────────────────────────────────────────────────┐
-│                   Client (Browser / Electron)     │
-│  ┌────────────────────────────────────────────┐  │
-│  │         React SPA (Vite)                   │  │
-│  │  ┌─────────┐ ┌──────────┐ ┌────────────┐  │  │
-│  │  │ Pages   │ │Components│ │ Stores     │  │  │
-│  │  │ (12)    │ │ (18)     │ │ (auth/     │  │  │
-│  │  │         │ │          │ │  theme/    │  │  │
-│  │  │         │ │          │ │  language) │  │  │
-│  │  └─────────┘ └──────────┘ └────────────┘  │  │
-│  │  ┌──────────────────────────────────────┐  │  │
-│  │  │         Lib utilities (14)           │  │  │
-│  │  │  supabase.js  pos.js  format.js      │  │  │
-│  │  │  customers.js export.js backup.js    │  │  │
-│  │  │  invoicePdf.js permissions.js        │  │  │
-│  │  └──────────────────────────────────────┘  │  │
-│  └────────────────────────────────────────────┘  │
-│                         │                         │
-│              Supabase JS Client                    │
-│                         │                         │
-└──────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│                   Client (Browser / Electron)         │
+│  ┌────────────────────────────────────────────────┐  │
+│  │  ┌─────────────┐   React SPA (Vite)           │  │
+│  │  │ LicenseGate │   ┌─────────┐ ┌──────────┐  │  │
+│  │  │ (entry      │   │ Pages   │ │Components│  │  │
+│  │  │  screen /   │   │ (12)    │ │ (19)     │  │  │
+│  │  │  gate)      │   └─────────┘ └──────────┘  │  │
+│  │  └─────────────┘   ┌──────────────────────┐  │  │
+│  │                     │  Lib utilities (16)   │  │  │
+│  │                     └──────────────────────┘  │  │
+│  └────────────────────────────────────────────────┘  │
+│                         │                             │
+│              Supabase JS Client / fetch()              │
+│                         │                             │
+└──────────────────────────────────────────────────────┘
                          │
                          ▼
-┌──────────────────────────────────────────────────┐
-│              Supabase (PostgreSQL)               │
-│  ┌────────────┐  ┌────────────┐  ┌───────────┐  │
-│  │  Auth      │  │  Database  │  │  RLS      │  │
-│  │  (users,   │  │  (9 tables)│  │  Policies │  │
-│  │  sessions) │  │            │  │           │  │
-│  └────────────┘  └────────────┘  └───────────┘  │
-│  ┌────────────────────────────────────────────┐  │
-│  │  PostgreSQL Functions (Triggers + RPCs)    │  │
-│  │  create_sale()  restore_backup()           │  │
-│  │  apply_inventory_purchase()                │  │
-│  │  apply_sale_inventory_deduction()          │  │
-│  └────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│              Supabase (PostgreSQL)                    │
+│  ┌────────────┐  ┌─────────────┐  ┌──────────────┐  │
+│  │  Auth      │  │  Database    │  │  Edge        │  │
+│  │  (users,   │  │  (10 tables) │  │  Functions   │  │
+│  │  sessions) │  │              │  │  verify-     │  │
+│  └────────────┘  │  + RLS       │  │  license     │  │
+│                  └─────────────┘  └──────────────┘  │
+│  ┌────────────────────────────────────────────────┐  │
+│  │  PostgreSQL Functions (Triggers + RPCs)        │  │
+│  │  create_sale()  restore_backup()               │  │
+│  │  apply_inventory_purchase()                    │  │
+│  │  apply_sale_inventory_deduction()              │  │
+│  └────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────┘
 ```
 
 ## Data Flow — Sale Creation
@@ -60,6 +56,44 @@
       - UPDATE inventory_items SET current_stock = current_stock - deducted
 8. Response with sale + items returned
 9. Invoice preview shown with print/PDF/WhatsApp actions
+```
+
+## Data Flow — License Verification
+
+```
+1. App mounts → LicenseGate component renders in main.jsx
+2. LicenseGate checks localStorage for 'acw_license_key' + 'acw_machine_id'
+3. If missing → shows full-screen entry form (black & gold theme)
+   a. User enters license key
+   b. Clicks Activate
+   c. Generates UUID machine_id via crypto.randomUUID()
+   d. POST { license_key, machine_id } to Edge Function /verify-license
+   e. On valid → store both in localStorage → render app (children)
+   f. On invalid → show error message
+4. If present → POST to Edge Function silently
+   a. If valid → render app
+   b. If invalid → clear localStorage → show entry screen
+   c. If server unreachable → fail open (render app)
+5. Background reverify every 24h via setInterval
+   a. If license deactivated/expired → clear keys → entry screen
+```
+
+## Edge Function — verify-license
+
+```
+POST /functions/v1/verify-license
+Body: { license_key: string, machine_id: string }
+
+Logic:
+  1. Query licenses table by license_key
+  2. If not found → { valid: false, "License key not found" }
+  3. If is_active = false → { valid: false, "License is not active" }
+  4. If machine_id IS NULL → bind machine_id, set activated_at → { valid: true }
+  5. If machine_id matches → { valid: true }
+  6. If machine_id differs → { valid: false, "already activated on another machine" }
+
+Deployed: supabase functions deploy verify-license --no-verify-jwt
+URL: env VITE_LICENSE_VERIFY_URL
 ```
 
 ## Authentication Flow

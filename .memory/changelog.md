@@ -5,6 +5,17 @@ All notable changes to the Arizona Car World POS system.
 ## [Unreleased]
 
 ### Added
+- **License Gate system**: Full-screen license activation on app launch (`LicenseGate.jsx`)
+- **verify-license Edge Function**: Supabase Edge Function for license key validation + machine binding
+- **Migration 015**: `licenses` table with RLS for license key management
+- **Env var**: `VITE_LICENSE_VERIFY_URL` for configurable Edge Function URL
+- **Strict rules**: `rules/license.md` — 8 enforced rules for license verification
+- **Seed license key**: `ACW-2025-MAIN-001` inserted in Supabase
+
+### Changed
+- `src/main.jsx`: Wrapped `<App />` in `<LicenseGate>` component
+- `src/components/LicenseGate.jsx`: Hardcoded URL → reads from `import.meta.env.VITE_LICENSE_VERIFY_URL`
+- `.env.example`: Added `VITE_LICENSE_VERIFY_URL`
 - .memory/ documentation directory with system analysis
 - Partial refund system: single-item & custom refund (Migration 014, RefundDialog rewrite)
 - ErrorBoundary wrapping on all routes

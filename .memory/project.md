@@ -29,6 +29,7 @@ Desktop POS and inventory management system for **Arizona Car World**, an automo
 | **Expenses** | Operating expenses (rent, salaries, utilities). Profit calculation. |
 | **Backup/Restore** | JSON export/import via Postgres RPC (atomic restore). Auto-backup prompt every 24h. |
 | **Invoice** | Thermal 80mm + A4 print. PDF download (both formats). WhatsApp share. QR code. |
+| **License Gate** | Full-screen license activation on first launch. Silent reverify every 24h. Edge Function `verify-license` for machine binding. |
 
 ## Tech Stack
 | Layer | Technology |
@@ -40,6 +41,7 @@ Desktop POS and inventory management system for **Arizona Car World**, an automo
 | Auth | Supabase Auth (email/password) |
 | Desktop | Electron via electron-builder |
 | Hosting | Cloudflare Workers (via Wrangler) |
+| Edge Functions | Supabase Edge Functions (Deno) |
 | Charts | Recharts |
 | PDF | jsPDF + jspdf-autotable |
 | Printing | html2canvas + window.print() |
@@ -64,7 +66,8 @@ Desktop POS and inventory management system for **Arizona Car World**, an automo
 ArizonaPOS/
 ├── .memory/               # System documentation (this directory)
 │   ├── rules/             # Business rule files for AI reference
-├── rules/                 # Strict enforcement rules (billing, etc.)
+├── rules/                 # Strict enforcement rules (billing, inventory, license)
+├── build/                 # Pre-built artifacts
 ├── build/                 # Pre-built artifacts
 ├── dist/                  # Vite dist output
 ├── node_modules/
@@ -77,13 +80,14 @@ ArizonaPOS/
 │   ├── ErrorBoundary.jsx
 │   ├── LoadingSpinner.jsx
 │   ├── pages/             # 12 page components
-│   ├── components/        # 18 reusable components
-│   ├── lib/               # 14 utility modules
+│   ├── components/        # 19 reusable components
+│   ├── lib/               # 16 utility modules
 │   ├── store/             # 3 Zustand stores
 │   └── hooks/             # useBarcodeScanner
 ├── supabase/
 │   ├── schema.sql         # Combined schema
-│   └── migrations/        # 8 migration files
+│   ├── migrations/        # 15 migration files
+│   └── functions/         # Edge Functions (verify-license)
 ├── .env.example
 ├── package.json
 ├── vite.config.js
@@ -119,6 +123,7 @@ VITE_COMPANY_PHONE=+1 555 000 0000
 VITE_COMPANY_WHATSAPP=+1 555 000 0000
 VITE_COMPANY_INSTAGRAM=@arizonacarworld
 VITE_DEFAULT_TAX_RATE=0
+VITE_LICENSE_VERIFY_URL=https://vdjhwmdzbjztiqhyrmai.supabase.co/functions/v1/verify-license
 ```
 
 ## Git Remotes & Backup Workflow
