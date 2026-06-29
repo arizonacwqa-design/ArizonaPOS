@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { Plus, X, Printer, ChevronDown, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
@@ -36,7 +36,7 @@ export default function Purchases() {
   const [loading, setLoading] = useState(false);
   const [expandedBills, setExpandedBills] = useState({});
   const [printBill, setPrintBill] = useState(null);
-  const printRef = useRef(null);
+  const printTriggered = useRef(false);
 
   useEffect(() => {
     loadData();
@@ -184,19 +184,25 @@ export default function Purchases() {
 
   function handlePrint(bill) {
     setPrintBill(bill);
+    printTriggered.current = true;
+    document.body.classList.add('printing-purchase-bill');
   }
+
+  useLayoutEffect(() => {
+    if (printTriggered.current) {
+      printTriggered.current = false;
+      window.print();
+    }
+  });
 
   useEffect(() => {
     if (!printBill) return;
-    const timer = setTimeout(() => {
-      window.print();
-    }, 50);
-    const afterPrint = () => setPrintBill(null);
-    window.addEventListener('afterprint', afterPrint);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('afterprint', afterPrint);
+    const afterPrint = () => {
+      document.body.classList.remove('printing-purchase-bill');
+      setPrintBill(null);
     };
+    window.addEventListener('afterprint', afterPrint);
+    return () => window.removeEventListener('afterprint', afterPrint);
   }, [printBill]);
 
   if (dataLoading) return <LoadingSpinner message="Loading purchases..." />;
@@ -475,7 +481,7 @@ export default function Purchases() {
         </div>
       </div>
 
-      {printBill && <PurchasePrint ref={printRef} purchase={printBill} items={printBill.purchase_items || []} />}
+      <PurchasePrint purchase={printBill} items={printBill?.purchase_items || []} />
     </div>
   );
 }

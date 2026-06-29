@@ -1,18 +1,17 @@
-import { forwardRef } from 'react';
 import { companyInfo } from '@/lib/supabase';
 import { formatCurrency, formatDate } from '@/lib/format';
 
-const PurchasePrint = forwardRef(function PurchasePrint({ purchase, items }, ref) {
-  if (!purchase) return null;
+export default function PurchasePrint({ purchase, items }) {
+  if (!purchase) return <div id="purchase-bill-print" className="hidden" />;
 
   const billItems = items || [];
   const grandTotal = billItems.reduce((s, i) => s + Number(i.total_cost || 0), 0) || Number(purchase.total_cost || 0);
 
   return (
-    <div className="hidden print:block bg-white text-gray-900 p-10 max-w-[210mm] mx-auto" ref={ref}>
-      <header className="border-b-4 border-amber-600 pb-6 mb-6">
-        <h1 className="text-2xl font-bold text-amber-700 text-center font-display">{companyInfo.name}</h1>
-        {companyInfo.address && <p className="text-center text-sm text-gray-600 mt-1">{companyInfo.address}</p>}
+    <div id="purchase-bill-print" className="hidden">
+      <header className="text-center border-b-4 border-amber-600 pb-4 mb-6">
+        <h1 className="text-2xl font-bold text-amber-700 font-display">{companyInfo.name}</h1>
+        {companyInfo.address && <p className="text-sm text-gray-600 mt-1">{companyInfo.address}</p>}
       </header>
 
       <h2 className="text-lg font-semibold text-gray-800 mb-4">Purchase Bill</h2>
@@ -70,6 +69,4 @@ const PurchasePrint = forwardRef(function PurchasePrint({ purchase, items }, ref
       </footer>
     </div>
   );
-});
-
-export default PurchasePrint;
+}

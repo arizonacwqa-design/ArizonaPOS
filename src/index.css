@@ -246,6 +246,23 @@
     padding: 16px;
   }
 
+  body.printing-purchase-bill * {
+    visibility: hidden;
+  }
+  body.printing-purchase-bill #purchase-bill-print,
+  body.printing-purchase-bill #purchase-bill-print * {
+    visibility: visible;
+  }
+  body.printing-purchase-bill #purchase-bill-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    color: #000 !important;
+    background: #fff !important;
+    padding: 24px 10px;
+  }
+
   body.printing-refund-report * {
     visibility: hidden;
   }
