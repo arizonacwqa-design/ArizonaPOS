@@ -130,9 +130,39 @@ Page-level checks via `useAuthStore().isAdmin()`.
 - Theme toggle (dark/light) in `themeStore.js`
 - Language toggle (en/ar) in `languageStore.js`, translations in `lib/translations.js`
 
+## Data Flow — Multi-Item Purchase
+
+```
+1. User enters bill header: bill#, supplier, date, notes
+2. User clicks "Add Item" → adds row with search dropdown + qty + unit cost
+3. Each row auto-calculates total (qty × unit cost)
+4. Grand Total computed as sum of all row totals
+5. On submit:
+   a. INSERT into inventory_purchases (1 row — bill header)
+   b. INSERT into purchase_items (N rows — one per item)
+   c. Trigger on_purchase_item_insert fires on each item:
+      - UPDATE inventory_items SET current_stock = current_stock + quantity
+   d. Trigger on_purchase_item_total fires:
+      - UPDATE inventory_purchases SET total_cost = SUM of purchase_items.total_cost
+```
+
 ## Printing System
 
-- **Thermal**: 80mm width, monospace font, logo, QR code, compact layout
-- **A4**: Full-page layout with company header, invoice table, totals
-- Both rendered as hidden DOM elements, triggered via `window.print()` or Electron's `electronAPI.printInvoice()`
+### Print Modes (CSS `@media print`)
+
+All modes use the same pattern:
+- `body * { display: none !important; }` — collapses all elements to zero height
+- Specific print area targeted via body class + element selector: `display: block !important; position: absolute; top: 0; left: 0; width: 100%;`
+- This prevents blank pages (hidden elements no longer take document space)
+
+| Print Mode | Body Class | Print Area | Trigger |
+|------------|-----------|------------|---------|
+| Thermal 80mm | `print-thermal` or default | `#thermal-invoice` | `reprintBrowserPrint('thermal')` |
+| A4 Invoice | `print-a4` | `#a4-invoice` | `reprintBrowserPrint('a4')` |
+| Purchase Report | `printing-purchase-report` | `[data-print-area="purchase-report"]` | `printPurchaseReport()` |
+| Purchase Bill | `printing-purchase-bill` | `#purchase-bill-print` | `handlePrint()` |
+| Refund Report | `printing-refund-report` | `[data-print-area="refund-report"]` | `printRefundReport()` |
+
+- **Purchase print** uses `useLayoutEffect` to ensure DOM is committed before `window.print()`
+- `afterprint` event removes body class + cleans up state
 - PDF generation via `jsPDF` + `jspdf-autotable` for export downloads

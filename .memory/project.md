@@ -22,7 +22,7 @@ Desktop POS and inventory management system for **Arizona Car World**, an automo
 | **Inventory** | Dual stock types: meter (PPF/Tint rolls) and quantity (bottles, pcs). Barcode search. Pagination. |
 | **Purchases** | Multi-item stock IN with bill#, supplier, date. Auto-stock increase via DB triggers. Barcode scan. Collapsible bill history with A4 print. |
 | **Services Catalog** | CRUD services, link to inventory for auto-deduction on sale. Active/inactive toggle. |
-| **Reports** | 11 tabs: Daily/Monthly Sales, Search Bills, Vehicle History, Expenses, Inventory, Low Stock, Top Services, Inventory Usage, Employee Sales, Purchase Reports |
+| **Reports** | 12 tabs: Daily/Monthly Sales, Search Bills, Vehicle History, Expenses, Inventory, Low Stock, Top Services, Inventory Usage, Employee Sales, Purchase Reports (with By Date/Daily/Monthly/Range views), Refunds |
 | **Dashboard** | Daily/monthly sales, net profit, low stock alerts, 7-day chart, top services, top inventory usage |
 | **Customers** | Auto-created from POS sales. History view with past invoices. Editable fields. |
 | **Bookings** | Appointment scheduling with status workflow (booked → confirmed → in_progress → ready → delivered → cancelled) |
@@ -44,7 +44,7 @@ Desktop POS and inventory management system for **Arizona Car World**, an automo
 | Edge Functions | Supabase Edge Functions (Deno) |
 | Charts | Recharts |
 | PDF | jsPDF + jspdf-autotable |
-| Printing | html2canvas + window.print() |
+| Printing | html2canvas + window.print() + CSS `@media print` with body-class scoped `display:none` for blank-page elimination |
 | Excel | xlsx (SheetJS) |
 | QR | qrcode package |
 | Icons | lucide-react |

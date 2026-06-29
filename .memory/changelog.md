@@ -16,6 +16,14 @@ All notable changes to the Arizona Car World POS system.
 - **Strict rules**: `rules/license.md` — 8 enforced rules for license verification
 - **Seed license key**: `ACW-2025-MAIN-001` inserted in Supabase
 
+### Fixed
+- **Print blank pages**: All print modes (purchase bill, purchase report, refund report) now use `display:none` instead of `visibility:hidden` — eliminates extra blank pages
+- **Purchase print timing**: `useLayoutEffect` + `requestAnimationFrame` ensures content renders before `window.print()` fires
+
+### Added
+- **Purchase report "By Date" view**: Calendar date picker to filter purchases by specific date
+- **CSS print rules**: `printing-purchase-bill` body class with dedicated `@media print` overrides
+
 ### Changed
 - `src/main.jsx`: Wrapped `<App />` in `<LicenseGate>` component
 - `src/components/LicenseGate.jsx`: Hardcoded URL → reads from `import.meta.env.VITE_LICENSE_VERIFY_URL`
