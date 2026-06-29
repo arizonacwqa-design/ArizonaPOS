@@ -1,13 +1,14 @@
+import { createPortal } from 'react-dom';
 import { companyInfo } from '@/lib/supabase';
 import { formatCurrency, formatDate } from '@/lib/format';
 
 export default function PurchasePrint({ purchase, items }) {
-  if (!purchase) return <div id="purchase-bill-print" className="hidden" />;
+  if (!purchase) return null;
 
   const billItems = items || [];
   const grandTotal = billItems.reduce((s, i) => s + Number(i.total_cost || 0), 0) || Number(purchase.total_cost || 0);
 
-  return (
+  return createPortal(
     <div id="purchase-bill-print" className="hidden">
       <header className="text-center border-b-4 border-amber-600 pb-4 mb-6">
         <h1 className="text-2xl font-bold text-amber-700 font-display">{companyInfo.name}</h1>
@@ -67,6 +68,7 @@ export default function PurchasePrint({ purchase, items }) {
       <footer className="mt-8 pt-4 border-t text-center text-[10px] text-gray-400">
         Powered by Friend's &amp; Co Software
       </footer>
-    </div>
+    </div>,
+    document.body
   );
 }

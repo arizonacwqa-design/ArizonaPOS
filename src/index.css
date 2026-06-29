@@ -177,25 +177,47 @@
   }
 
   html, body {
-    height: 0;
+    height: auto;
     overflow: hidden;
     margin: 0;
     padding: 0;
   }
 
+  /* Hide ALL elements using visibility (ancestors keep their box so
+     children can override visibility). Also collapse hidden elements
+     to 0 height to prevent blank pages from paginating tall hidden content. */
   body * {
-    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
   }
 
   .no-print {
     display: none !important;
   }
 
+  /* ── Thermal 80mm ── */
   body.print-thermal #thermal-invoice,
   body.print-thermal #thermal-invoice *,
   body:not(.print-a4) #thermal-invoice,
   body:not(.print-a4) #thermal-invoice * {
-    display: block !important;
+    visibility: visible !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: revert !important;
+    padding: revert !important;
+    border: revert !important;
+    font-size: revert !important;
+    line-height: revert !important;
   }
 
   body.print-thermal #thermal-invoice,
@@ -204,17 +226,28 @@
     left: 0;
     top: 0;
     width: 80mm;
-    font-size: 11px;
     color: #000 !important;
     background: #fff !important;
+    page-break-after: avoid;
   }
 
+  /* ── A4 Invoice ── */
   body.print-a4 #a4-invoice,
   body.print-a4 #a4-invoice * {
-    display: block !important;
+    visibility: visible !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: revert !important;
+    padding: revert !important;
+    border: revert !important;
+    font-size: revert !important;
+    line-height: revert !important;
   }
 
-  body.print-a4 #thermal-invoice {
+  body.print-a4 #thermal-invoice,
+  body.print-a4 #thermal-invoice * {
     display: none !important;
   }
 
@@ -225,11 +258,22 @@
     width: 100%;
     color: #000 !important;
     background: #fff !important;
+    page-break-after: avoid;
   }
 
+  /* ── Purchase Report ── */
   body.printing-purchase-report [data-print-area="purchase-report"],
   body.printing-purchase-report [data-print-area="purchase-report"] * {
-    display: block !important;
+    visibility: visible !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: revert !important;
+    padding: revert !important;
+    border: revert !important;
+    font-size: revert !important;
+    line-height: revert !important;
   }
   body.printing-purchase-report [data-print-area="purchase-report"] {
     position: absolute;
@@ -241,11 +285,22 @@
     padding: 16px;
   }
 
+  /* ── Purchase Bill ── */
   body.printing-purchase-bill #purchase-bill-print,
   body.printing-purchase-bill #purchase-bill-print * {
-    display: block !important;
+    visibility: visible !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: revert !important;
+    padding: revert !important;
+    border: revert !important;
+    font-size: revert !important;
+    line-height: revert !important;
   }
   body.printing-purchase-bill #purchase-bill-print {
+    display: block !important;
     position: absolute;
     left: 0;
     top: 0;
@@ -255,9 +310,19 @@
     padding: 24px 10px;
   }
 
+  /* ── Refund Report ── */
   body.printing-refund-report [data-print-area="refund-report"],
   body.printing-refund-report [data-print-area="refund-report"] * {
-    display: block !important;
+    visibility: visible !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: revert !important;
+    padding: revert !important;
+    border: revert !important;
+    font-size: revert !important;
+    line-height: revert !important;
   }
   body.printing-refund-report [data-print-area="refund-report"] {
     position: absolute;
