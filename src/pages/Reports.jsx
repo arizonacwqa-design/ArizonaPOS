@@ -701,7 +701,7 @@ export default function Reports() {
       {tab === 'purchases' && (
         <div className="space-y-4" data-print-area="purchase-report">
           <div className="flex flex-wrap gap-2">
-            {['daily', 'monthly', 'range'].map((v) => (
+            {['date', 'daily', 'monthly', 'range'].map((v) => (
               <button
                 key={v}
                 type="button"
@@ -712,10 +712,87 @@ export default function Reports() {
                     : 'bg-luxury-slate text-gray-400'
                 }`}
               >
-                {v === 'daily' ? 'Daily' : v === 'monthly' ? 'Monthly' : 'Date Range'}
+                {v === 'date' ? 'By Date' : v === 'daily' ? 'Daily' : v === 'monthly' ? 'Monthly' : 'Date Range'}
               </button>
             ))}
           </div>
+
+          {purchaseView === 'date' && (
+            <>
+              <div>
+                <label className="label-luxury">Select Date</label>
+                <input
+                  type="date"
+                  className="input-luxury w-auto"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                />
+              </div>
+              <div className="card-luxury flex items-center justify-between">
+                <div>
+                  <p className="text-3xl font-bold text-gold-400">{formatCurrency(purchasesDailyTotal)}</p>
+                  <p className="text-luxury-muted text-sm">{dailyPurchases.length} purchase bills on {selectedDate}</p>
+                </div>
+                <button type="button" onClick={printPurchaseReport} className="btn-outline flex items-center gap-2 text-sm">
+                  <Printer size={16} /> Print
+                </button>
+              </div>
+              <div className="card-luxury overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-luxury-muted border-b border-luxury-border">
+                      <th className="text-left py-3 px-2">Supplier</th>
+                      <th className="text-left py-3 px-2">Bill #</th>
+                      <th className="text-left py-3 px-2">Item</th>
+                      <th className="text-right py-3 px-2">Qty</th>
+                      <th className="text-right py-3 px-2">Unit Cost</th>
+                      <th className="text-right py-3 px-2">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dailyPurchases.map((p) => {
+                      const billItems = p.purchase_items || [];
+                      if (billItems.length > 0) {
+                        return billItems.map((i, idx) => (
+                          <tr key={i.id || `${p.id}-${idx}`} className="border-b border-luxury-border/50">
+                            {idx === 0 && (
+                              <>
+                                <td className="py-3 px-2" rowSpan={billItems.length}>{p.supplier_name}</td>
+                                <td className="py-3 px-2" rowSpan={billItems.length}>{p.bill_number || '—'}</td>
+                              </>
+                            )}
+                            <td className="py-3 px-2">{i.item_name}</td>
+                            <td className="py-3 px-2 text-right">{Number(i.quantity)}</td>
+                            <td className="py-3 px-2 text-right">{formatCurrency(i.unit_cost)}</td>
+                            <td className="py-3 px-2 text-right text-gold-400">{formatCurrency(i.total_cost)}</td>
+                          </tr>
+                        ));
+                      }
+                      return (
+                        <tr key={p.id} className="border-b border-luxury-border/50">
+                          <td className="py-3 px-2">{p.supplier_name}</td>
+                          <td className="py-3 px-2">{p.bill_number || '—'}</td>
+                          <td className="py-3 px-2">{p.inventory_items?.name || '—'}</td>
+                          <td className="py-3 px-2 text-right">{p.meters_added > 0 ? `${p.meters_added}m` : `${p.quantity_added} pcs`}</td>
+                          <td className="py-3 px-2 text-right">{formatCurrency(p.unit_cost)}</td>
+                          <td className="py-3 px-2 text-right text-gold-400">{formatCurrency(p.total_cost)}</td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="border-t-2 border-gold-500/30 font-semibold">
+                      <td colSpan={5} className="py-3 px-2 text-right text-gold-400">Grand Total</td>
+                      <td className="py-3 px-2 text-right text-gold-400">{formatCurrency(purchasesDailyTotal)}</td>
+                    </tr>
+                    {dailyPurchases.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-luxury-muted">No purchases on this date</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
           {purchaseView === 'daily' && (
             <>

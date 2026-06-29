@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Plus, X, Printer, ChevronDown, ChevronRight, Search } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Plus, X, Printer, ChevronDown, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatCurrency, formatDate, formatStock } from '@/lib/format';
@@ -36,6 +36,7 @@ export default function Purchases() {
   const [loading, setLoading] = useState(false);
   const [expandedBills, setExpandedBills] = useState({});
   const [printBill, setPrintBill] = useState(null);
+  const printRef = useRef(null);
 
   useEffect(() => {
     loadData();
@@ -183,11 +184,20 @@ export default function Purchases() {
 
   function handlePrint(bill) {
     setPrintBill(bill);
-    setTimeout(() => {
-      window.print();
-      setTimeout(() => setPrintBill(null), 500);
-    }, 100);
   }
+
+  useEffect(() => {
+    if (!printBill) return;
+    const timer = setTimeout(() => {
+      window.print();
+    }, 50);
+    const afterPrint = () => setPrintBill(null);
+    window.addEventListener('afterprint', afterPrint);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('afterprint', afterPrint);
+    };
+  }, [printBill]);
 
   if (dataLoading) return <LoadingSpinner message="Loading purchases..." />;
 
@@ -465,7 +475,7 @@ export default function Purchases() {
         </div>
       </div>
 
-      {printBill && <PurchasePrint purchase={printBill} items={printBill.purchase_items || []} />}
+      {printBill && <PurchasePrint ref={printRef} purchase={printBill} items={printBill.purchase_items || []} />}
     </div>
   );
 }
