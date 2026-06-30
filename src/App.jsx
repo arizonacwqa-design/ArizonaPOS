@@ -19,6 +19,7 @@ import Bookings from './pages/Bookings';
 import Backup from './pages/Backup';
 import Settings from './pages/Settings';
 import Expenses from './pages/Expenses';
+import Website from './pages/Website';
 
 import { useAuthStore } from './store/authStore';
 
@@ -33,6 +34,8 @@ export default function App() {
     <ErrorBoundary>
       <AppRouter>
         <Routes>
+
+          <Route path="/website" element={<ErrorBoundary><Website /></ErrorBoundary>} />
 
           <Route
             path="/login"
