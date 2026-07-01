@@ -11,6 +11,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useTranslation } from '@/lib/translations';
 
 const N8N_WEBHOOK = 'https://primary-production-4ad9a.up.railway.app/webhook/human-reply';
 
@@ -59,6 +60,7 @@ export default function WhatsAppMonitor() {
   const [messageInput, setMessageInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
+  const { t } = useTranslation();
   const [unread, setUnread] = useState({});
   const messagesEndRef = useRef(null);
   const errorTimer = useRef(null);
@@ -250,7 +252,7 @@ export default function WhatsAppMonitor() {
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="animate-spin text-gold-400 mx-auto mb-3" size={32} />
-          <p className="text-luxury-muted text-sm">Loading conversations...</p>
+          <p className="text-luxury-muted text-sm">{t('loadingConversations')}</p>
         </div>
       </div>
     );
@@ -268,7 +270,7 @@ export default function WhatsAppMonitor() {
       <div className="w-80 shrink-0 border-r border-luxury-border bg-luxury-charcoal flex flex-col">
         <div className="p-4 border-b border-luxury-border">
           <h1 className="text-xl font-bold text-luxury-foreground">WhatsApp</h1>
-          <p className="text-xs text-luxury-muted mt-0.5">مراقبة المحادثات</p>
+          <p className="text-xs text-luxury-muted mt-0.5">{t('whatsappMonitor')}</p>
         </div>
 
         <div className="px-4 pt-4 pb-2">
@@ -289,7 +291,7 @@ export default function WhatsAppMonitor() {
             ) : (
               <Bot size={18} />
             )}
-            {aiPaused ? 'AI Paused — Click to Resume' : 'AI Active — Click to Pause'}
+            {aiPaused ? t('aiPausedClickResume') : t('aiActiveClickPause')}
           </button>
           <div className="flex items-center gap-1.5 mt-1.5 justify-center">
             <span
@@ -298,7 +300,7 @@ export default function WhatsAppMonitor() {
               }`}
             />
             <span className="text-[11px] text-luxury-muted">
-              {aiPaused ? 'AI متوقف' : 'AI نشط'}
+              {aiPaused ? t('aiPaused') : t('aiActive')}
             </span>
           </div>
         </div>
@@ -313,7 +315,7 @@ export default function WhatsAppMonitor() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="ابحث عن محادثة..."
+              placeholder={t('searchConversations')}
               className="input-luxury pl-9 py-2 text-sm"
             />
           </div>
@@ -322,7 +324,7 @@ export default function WhatsAppMonitor() {
         <div className="flex-1 overflow-y-auto">
           {filteredCustomers.length === 0 ? (
             <div className="p-4 text-center text-luxury-muted text-sm mt-8">
-              {searchQuery ? 'No conversations match your search' : 'No conversations yet'}
+              {searchQuery ? t('noConversationsMatch') : t('noConversationsYet')}
             </div>
           ) : (
             filteredCustomers.map((c) => {
@@ -382,8 +384,8 @@ export default function WhatsAppMonitor() {
                 className="text-luxury-muted/40 mx-auto mb-4"
                 size={64}
               />
-              <p className="text-luxury-muted">اختر محادثة للبدء</p>
-              <p className="text-luxury-muted/60 text-sm mt-1">Select a conversation</p>
+              <p className="text-luxury-muted">{t('selectConversation')}</p>
+              <p className="text-luxury-muted/60 text-sm mt-1">{t('selectConversation')}</p>
             </div>
           </div>
         ) : (
@@ -412,7 +414,7 @@ export default function WhatsAppMonitor() {
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-1">
               {conversationMessages.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-luxury-muted text-sm">
-                  No messages yet
+                  {t('noMessagesYet')}
                 </div>
               ) : (
                 conversationMessages.map((msg, idx) => {
@@ -463,11 +465,11 @@ export default function WhatsAppMonitor() {
                               }`}
                             >
                               {msg.direction === 'incoming' ? (
-                                'عميل'
+                                t('customer')
                               ) : msg.sent_by === 'human' ? (
                                 <>
                                   <User size={10} />
-                                  أنت
+                                  {t('you')}
                                 </>
                               ) : (
                                 'AI'
@@ -496,7 +498,7 @@ export default function WhatsAppMonitor() {
                         sendMessage();
                       }
                     }}
-                    placeholder="اكتب رسالتك..."
+                    placeholder={t('typeMessage')}
                     rows={2}
                     className="input-luxury resize-none text-sm"
                   />
@@ -521,10 +523,10 @@ export default function WhatsAppMonitor() {
                   className="w-full border border-luxury-border bg-luxury-slate/50 rounded-lg px-4 py-3 text-center text-sm text-luxury-muted hover:bg-luxury-slate transition-all cursor-pointer"
                 >
                   <Bot className="inline-block mr-1.5 -mt-0.5" size={16} />
-                  AI is managing this conversation
+                  {t('aiManaging')}
                   <br />
                   <span className="text-[11px] text-luxury-muted/60">
-                    أوقف AI للرد يدوياً — Pause AI to reply manually
+                    {t('pauseAiToReply')}
                   </span>
                 </button>
               )}

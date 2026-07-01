@@ -189,6 +189,24 @@ export const translations = {
     settingsPageTitle: 'Settings',
     settingsPageSubtitle: 'Language and theme customization',
     settingsSaved: 'Settings saved successfully',
+
+    // WhatsApp Monitor
+    whatsappMonitor: 'Monitor Conversations',
+    aiActiveClickPause: 'AI Active — Click to Pause',
+    aiPausedClickResume: 'AI Paused — Click to Resume',
+    aiActive: 'AI Active',
+    aiPaused: 'AI Paused',
+    searchConversations: 'Search conversations...',
+    noConversationsMatch: 'No conversations match your search',
+    noConversationsYet: 'No conversations yet',
+    selectConversation: 'Select a conversation',
+    noMessagesYet: 'No messages yet',
+    customer: 'Customer',
+    you: 'You',
+    typeMessage: 'Type a message...',
+    aiManaging: 'AI is handling this conversation',
+    pauseAiToReply: 'Pause AI to reply manually',
+    loadingConversations: 'Loading conversations...',
   },
   ar: {
     // Navigation / Sidebar
@@ -373,6 +391,24 @@ export const translations = {
     settingsPageTitle: 'الإعدادات',
     settingsPageSubtitle: 'تخصيص اللغة والمظهر',
     settingsSaved: 'تم حفظ الإعدادات بنجاح',
+
+    // WhatsApp Monitor
+    whatsappMonitor: 'مراقبة المحادثات',
+    aiActiveClickPause: 'AI نشط — اضغط للإيقاف',
+    aiPausedClickResume: 'AI متوقف — اضغط للتشغيل',
+    aiActive: 'AI نشط',
+    aiPaused: 'AI متوقف',
+    searchConversations: 'ابحث عن محادثة...',
+    noConversationsMatch: 'لا توجد محادثات تطابق بحثك',
+    noConversationsYet: 'لا توجد محادثات بعد',
+    selectConversation: 'اختر محادثة للبدء',
+    noMessagesYet: 'لا توجد رسائل بعد',
+    customer: 'عميل',
+    you: 'أنت',
+    typeMessage: 'اكتب رسالتك...',
+    aiManaging: 'AI يتحكم في هذه المحادثة',
+    pauseAiToReply: 'أوقف AI للرد يدوياً',
+    loadingConversations: 'جاري تحميل المحادثات...',
   }
 };
 
