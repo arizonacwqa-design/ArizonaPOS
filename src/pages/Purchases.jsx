@@ -285,18 +285,39 @@ export default function Purchases() {
                           className="input-luxury text-sm py-2"
                           value={row.searchText}
                           onChange={(e) => {
+                            const val = e.target.value;
                             updateRow(row.key, {
-                              searchText: e.target.value,
+                              searchText: val,
                               showDropdown: true,
                               inventory_item_id: '',
                             });
+                            const match = items.find((i) => i.barcode && i.barcode === val.trim());
+                            if (match) {
+                              updateRow(row.key, {
+                                inventory_item_id: match.id,
+                                searchText: match.name,
+                                showDropdown: false,
+                              });
+                              supabase
+                                .from('inventory_purchases')
+                                .select('unit_cost')
+                                .eq('inventory_item_id', match.id)
+                                .order('created_at', { ascending: false })
+                                .limit(1)
+                                .maybeSingle()
+                                .then(({ data }) => {
+                                  if (data?.unit_cost) {
+                                    updateRow(row.key, { unit_cost: data.unit_cost });
+                                  }
+                                });
+                            }
                           }}
                           onFocus={() => updateRow(row.key, { showDropdown: true })}
                           onBlur={() => setTimeout(() => updateRow(row.key, { showDropdown: false }), 200)}
                           placeholder="Search item or scan barcode..."
                         />
                         {row.showDropdown && filteredItems.length > 0 && (
-                          <div className="absolute z-10 mt-1 w-full rounded-xl border border-luxury-border bg-luxury-charcoal shadow-lg max-h-40 overflow-y-auto">
+                          <div className="absolute z-50 mt-1 w-full rounded-xl border border-luxury-border bg-luxury-charcoal shadow-lg max-h-[300px] overflow-y-auto">
                             {filteredItems.map((item) => (
                               <button
                                 key={item.id}
@@ -320,10 +341,11 @@ export default function Purchases() {
                                       }
                                     });
                                 }}
-                                className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gold-600/15 hover:text-gold-300 border-b border-luxury-border/50 last:border-b-0"
+                                className="w-full text-left py-3 px-4 text-sm text-white hover:bg-gold-600/15 hover:text-gold-300 border-b border-luxury-border/50 last:border-b-0"
                               >
                                 <span className="font-medium">{item.name}</span>
-                                <span className="text-luxury-muted ml-2 text-xs">{formatStock(item)}</span>
+                                {item.barcode && <span className="text-luxury-muted ml-2 text-xs">#{item.barcode}</span>}
+                                <span className="text-luxury-muted ml-auto text-xs">{formatStock(item)}</span>
                               </button>
                             ))}
                           </div>
