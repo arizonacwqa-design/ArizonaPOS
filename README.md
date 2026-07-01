@@ -13,7 +13,7 @@ Desktop POS and inventory app for **Arizona Car World** (detailing, PPF, tint).
 | **POS Billing** | Customer, phone, car, services, discount, payment, print invoice |
 | **Meter inventory** | PPF & tint rolls tracked in **meters** (e.g. 15m, 22m) |
 | **Quantity inventory** | Bottles, chemicals, towels in **pcs** |
-| **Purchases** | Admin adds stock with bill #, supplier, date |
+| **Purchases** | Admin adds stock with bill #, supplier, multi-item rows, barcode search with live dropdown |
 | **Reports** | Daily/monthly sales, inventory, low stock, top services, employee sales |
 | **Login** | Admin & Employee roles |
 | **Dashboard** | Black & gold UI, sales stats, low stock alerts |

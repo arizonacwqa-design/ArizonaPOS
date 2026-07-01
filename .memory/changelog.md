@@ -10,7 +10,7 @@ All notable changes to the Arizona Car World POS system.
 - **WhatsApp Monitor**: Real-time WhatsApp conversation dashboard with AI pause/resume toggle, manual human reply via n8n webhook, Supabase real-time subscriptions (`src/pages/WhatsAppMonitor.jsx`)
 
 ### Changed
-- **Purchases dropdown**: Larger (max-h-[300px], 6-7 items visible), wider z-index, py-3 px-4 padding, barcode + stock display, auto-select on exact barcode match
+- **Purchases dropdown**: Portal-based dropdown (escapes table overflow), scroll-following via requestAnimationFrame, max-h 55vh, py-3 px-4, barcode + stock display, auto-select on exact barcode match
 
 ### Fixed
 - **WhatsApp language**: Connected WhatsAppMonitor to existing `useTranslation` system — English by default, Arabic when QA selected. Added 15 translation keys to `translations.js`
