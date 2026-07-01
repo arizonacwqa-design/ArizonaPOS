@@ -5,7 +5,12 @@ All notable changes to the Arizona Car World POS system.
 ## [Unreleased]
 
 ### Added
+- **Multi-item Expense Bills**: Redesigned Expenses page with bill-based entry — invoice number, supplier/vendor, dynamic item rows (description/qty/unit cost/total), grand total
+- **Migration 017**: `expense_items` table with cascade delete, `invoice_number` + `supplier_name` columns on `operating_expenses`
 - **WhatsApp Monitor**: Real-time WhatsApp conversation dashboard with AI pause/resume toggle, manual human reply via n8n webhook, Supabase real-time subscriptions (`src/pages/WhatsAppMonitor.jsx`)
+
+### Changed
+- **Purchases dropdown**: Larger (max-h-[300px], 6-7 items visible), wider z-index, py-3 px-4 padding, barcode + stock display, auto-select on exact barcode match
 
 ### Fixed
 - **WhatsApp language**: Connected WhatsAppMonitor to existing `useTranslation` system — English by default, Arabic when QA selected. Added 15 translation keys to `translations.js`

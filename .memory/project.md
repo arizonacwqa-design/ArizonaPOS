@@ -26,7 +26,7 @@ Desktop POS and inventory management system for **Arizona Car World**, an automo
 | **Dashboard** | Daily/monthly sales, net profit, low stock alerts, 7-day chart, top services, top inventory usage |
 | **Customers** | Auto-created from POS sales. History view with past invoices. Editable fields. |
 | **Bookings** | Appointment scheduling with status workflow (booked → confirmed → in_progress → ready → delivered → cancelled) |
-| **Expenses** | Operating expenses (rent, salaries, utilities). Profit calculation. |
+| **Expenses** | Multi-item bill-based expense entry with invoice#, supplier, item rows. Expandable bill history. Profit calculation. |
 | **Backup/Restore** | JSON export/import via Postgres RPC (atomic restore). Auto-backup prompt every 24h. |
 | **Invoice** | Thermal 80mm + A4 print. PDF download (both formats). WhatsApp share. QR code. |
 | **License Gate** | Full-screen license activation on first launch. Silent reverify every 24h. Edge Function `verify-license` for machine binding. |
@@ -87,7 +87,7 @@ ArizonaPOS/
 │   └── hooks/             # useBarcodeScanner
 ├── supabase/
 │   ├── schema.sql         # Combined schema
-│   ├── migrations/        # 15 migration files
+│   ├── migrations/        # 17 migration files
 │   └── functions/         # Edge Functions (verify-license)
 ├── .env.example
 ├── package.json

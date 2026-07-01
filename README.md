@@ -17,6 +17,7 @@ Desktop POS and inventory app for **Arizona Car World** (detailing, PPF, tint).
 | **Reports** | Daily/monthly sales, inventory, low stock, top services, employee sales |
 | **Login** | Admin & Employee roles |
 | **Dashboard** | Black & gold UI, sales stats, low stock alerts |
+| **Expenses** | Multi-item bill-based expense entry with invoice#, supplier, item rows, grand total |
 | **Thermal print** | 80mm invoice with logo, contact info, invoice # |
 | **WhatsApp Monitor** | Real-time chat monitor with AI pause/resume, manual reply via n8n webhook |
 
@@ -157,8 +158,9 @@ Login with the email/password you created in Step 6.
 
 1. Go to **Purchases**
 2. Enter bill number, supplier, date
-3. Select item and enter **meters** or **quantity**
-4. Save — stock **increases** automatically
+3. Search items by name or barcode — live dropdown shows barcode + stock, auto-selects on exact barcode match
+4. Enter quantity and unit cost per item (multi-item bills supported)
+5. Save — stock **increases** automatically via DB triggers. Collapsible bill history with A4 print.
 
 ### Reports
 
