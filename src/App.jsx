@@ -20,6 +20,7 @@ import Backup from './pages/Backup';
 import Settings from './pages/Settings';
 import Expenses from './pages/Expenses';
 import Website from './pages/Website';
+import WhatsAppMonitor from './pages/WhatsAppMonitor';
 
 import { useAuthStore } from './store/authStore';
 
@@ -102,6 +103,8 @@ export default function App() {
             />
 
             <Route path="settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
+
+            <Route path="whatsapp" element={<ErrorBoundary><WhatsAppMonitor /></ErrorBoundary>} />
 
           </Route>
 

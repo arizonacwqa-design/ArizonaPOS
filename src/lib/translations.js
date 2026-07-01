@@ -15,6 +15,7 @@ export const translations = {
     backup: 'Backup',
     settings: 'Settings',
     signOut: 'Sign Out',
+    whatsapp: 'WhatsApp',
 
     // Common UI
     save: 'Save',
@@ -203,6 +204,7 @@ export const translations = {
     backup: 'النسخ الاحتياطي',
     settings: 'الإعدادات',
     signOut: 'تسجيل الخروج',
+    whatsapp: 'واتساب',
 
     // Common UI
     save: 'حفظ',

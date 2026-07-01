@@ -33,6 +33,7 @@ const navItems = [
   { to: '/expenses', icon: Receipt, labelKey: 'expenses', adminOnly: true },
   { to: '/backup', icon: Database, labelKey: 'backup', adminOnly: true },
   { to: '/settings', icon: Settings, labelKey: 'settings' },
+  { to: '/whatsapp', icon: MessageCircle, labelKey: 'whatsapp' },
 ];
 
 export default function Sidebar({
