@@ -18,6 +18,7 @@ Desktop POS and inventory app for **Arizona Car World** (detailing, PPF, tint).
 | **Login** | Admin & Employee roles |
 | **Dashboard** | Black & gold UI, sales stats, low stock alerts |
 | **Thermal print** | 80mm invoice with logo, contact info, invoice # |
+| **WhatsApp Monitor** | Real-time chat monitor with AI pause/resume, manual reply via n8n webhook |
 
 ---
 
@@ -201,10 +202,11 @@ ArizonaPOS/
 │   ├── main.js        # Window + print handler
 │   └── preload.js     # Safe bridge to React
 ├── src/
-│   ├── pages/         # Dashboard, POS, Inventory, etc.
+│   ├── pages/         # Dashboard, POS, Inventory, WhatsAppMonitor, etc.
 │   ├── components/    # UI pieces, invoice template
 │   ├── lib/           # Supabase client, formatting
-│   └── store/         # Login state
+│   ├── store/         # Login state (Zustand)
+│   └── hooks/         # useBarcodeScanner
 ├── supabase/
 │   └── schema.sql     # Database tables
 ├── public/

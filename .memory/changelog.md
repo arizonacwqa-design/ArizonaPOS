@@ -5,6 +5,7 @@ All notable changes to the Arizona Car World POS system.
 ## [Unreleased]
 
 ### Added
+- **WhatsApp Monitor**: Real-time WhatsApp conversation dashboard with AI pause/resume toggle, manual human reply via n8n webhook, Supabase real-time subscriptions (`src/pages/WhatsAppMonitor.jsx`)
 - **Multi-item Purchases**: Redesigned Purchases page with per-bill item rows, grand total, collapsible history, A4 print
 - **Migration 016**: `purchase_items` table, modified triggers for multi-item stock-in
 - **PurchasePrint component**: A4 print layout for purchase bills

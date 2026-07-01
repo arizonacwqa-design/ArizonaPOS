@@ -1,8 +1,8 @@
 # Automation & n8n Workflow Integration
 
-> **Status**: ⚠️ No n8n integration currently exists in this codebase.
-> This document defines the architecture, rules, and proposed flows should n8n be connected.
-> All WhatsApp notifications are currently handled client-side via direct `wa.me` links.
+> **Status**: ✅ Partial n8n integration exists.
+> **WhatsApp Monitor** (`src/pages/WhatsAppMonitor.jsx`) sends human replies via n8n webhook at `https://primary-production-4ad9a.up.railway.app/webhook/human-reply`.
+> Invoice sharing still uses client-side `wa.me` links.
 
 ---
 
@@ -12,10 +12,11 @@
 |---------|----------------------|---------|
 | WhatsApp invoice sharing | Client-side `wa.me` link via `openWhatsApp()` | `src/lib/share.js:48-54` |
 | Invoice message builder | `buildInvoiceWhatsAppMessage()` creates plain text | `src/lib/share.js:15-40` |
-| Webhooks | None | — |
-| n8n workflows | None | — |
+| WhatsApp human reply | n8n webhook POST to Railway app | `src/pages/WhatsAppMonitor.jsx:15,182-191` |
+| Webhooks | Human reply webhook implemented | `src/pages/WhatsAppMonitor.jsx` |
+| n8n workflows | Human reply workflow active | WhatsAppMonitor |
 | Automation event log | None | — |
-| Retry mechanism | None | — |
+| Retry mechanism | None (fire-and-forget) | — |
 
 ---
 
@@ -329,8 +330,9 @@ CREATE TABLE IF NOT EXISTS public.automation_log (
 
 | File | Purpose |
 |------|---------|
-| `src/lib/share.js` | Current client-side WhatsApp sharing (no webhooks) |
+| `src/lib/share.js` | Client-side WhatsApp sharing (wa.me links) |
 | `src/lib/constants.js` | Config constants (no n8n config currently) |
+| `src/pages/WhatsAppMonitor.jsx` | WhatsApp conversation dashboard with n8n webhook for human replies |
 | `src/pages/POS.jsx` | Would wire sale.completed event |
 | `src/pages/Purchases.jsx` | Would wire inventory.purchase event |
 | `src/pages/Inventory.jsx` | Would wire low-stock alert event |

@@ -83,6 +83,7 @@ rules/ (project root, strict enforcement)
 | Invoice A4 component | `src/components/A4Invoice.jsx` |
 | Invoice PDF generation | `src/lib/invoicePdf.js` |
 | Invoice share (WhatsApp) | `src/lib/share.js` |
+| WhatsApp Monitor dashboard | `src/pages/WhatsAppMonitor.jsx` |
 | Inventory page | `src/pages/Inventory.jsx` |
 | Purchases page | `src/pages/Purchases.jsx` |
 | Database triggers | `supabase/schema.sql` |

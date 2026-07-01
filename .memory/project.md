@@ -30,6 +30,7 @@ Desktop POS and inventory management system for **Arizona Car World**, an automo
 | **Backup/Restore** | JSON export/import via Postgres RPC (atomic restore). Auto-backup prompt every 24h. |
 | **Invoice** | Thermal 80mm + A4 print. PDF download (both formats). WhatsApp share. QR code. |
 | **License Gate** | Full-screen license activation on first launch. Silent reverify every 24h. Edge Function `verify-license` for machine binding. |
+| **WhatsApp Monitor** | Real-time WhatsApp conversation dashboard with AI on/off toggle, manual reply via n8n webhook, Supabase real-time subscriptions |
 
 ## Tech Stack
 | Layer | Technology |
@@ -79,7 +80,7 @@ ArizonaPOS/
 │   ├── index.css          # Global styles + Tailwind
 │   ├── ErrorBoundary.jsx
 │   ├── LoadingSpinner.jsx
-│   ├── pages/             # 12 page components
+│   ├── pages/             # 13 page components
 │   ├── components/        # 20 reusable components
 │   ├── lib/               # 16 utility modules
 │   ├── store/             # 3 Zustand stores
@@ -111,6 +112,7 @@ ArizonaPOS/
 | `/expenses` | Expenses | Admin only |
 | `/backup` | Backup | Admin only |
 | `/settings` | Settings | All authenticated |
+| `/whatsapp` | WhatsApp Monitor | All authenticated |
 | `/login/:role` | Login | Guest only |
 
 ## Environment Variables (.env)
