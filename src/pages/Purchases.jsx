@@ -317,7 +317,7 @@ export default function Purchases() {
                           placeholder="Search item or scan barcode..."
                         />
                         {row.showDropdown && filteredItems.length > 0 && (
-                          <div className="absolute z-50 mt-1 w-full rounded-xl border border-luxury-border bg-luxury-charcoal shadow-lg max-h-[300px] overflow-y-auto">
+                          <div className="absolute z-50 mt-1 w-full rounded-xl border border-luxury-border bg-luxury-charcoal shadow-lg max-h-[55vh] overflow-y-auto">
                             {filteredItems.map((item) => (
                               <button
                                 key={item.id}
