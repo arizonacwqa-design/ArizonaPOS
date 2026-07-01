@@ -15,6 +15,7 @@ import {
   ChevronsRight,
   Settings,
   X,
+  MessageCircle,
 } from 'lucide-react';
 import Logo from './Logo';
 import ThemeToggle from './ThemeToggle';
