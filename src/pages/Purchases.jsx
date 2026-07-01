@@ -510,19 +510,38 @@ export default function Purchases() {
 }
 
 function DropdownPortal({ inputEl, items, onSelect, formatStock }) {
-  const rect = inputEl.getBoundingClientRect();
-  const style = {
-    position: 'fixed',
-    left: `${rect.left}px`,
-    top: `${rect.bottom + 4}px`,
-    width: `${rect.width}px`,
-    maxHeight: '55vh',
-    zIndex: 9999,
-  };
+  const [pos, setPos] = useState({ left: 0, top: 0, width: 0 });
+  const rafRef = useRef(null);
+
+  const updatePos = useCallback(() => {
+    if (!inputEl) return;
+    const r = inputEl.getBoundingClientRect();
+    setPos({ left: r.left, top: r.bottom + 4, width: r.width });
+  }, [inputEl]);
+
+  useEffect(() => {
+    updatePos();
+    const handleScroll = () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(updatePos);
+    };
+    window.addEventListener('scroll', handleScroll, true);
+    return () => {
+      window.removeEventListener('scroll', handleScroll, true);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [updatePos]);
 
   return (
     <div
-      style={style}
+      style={{
+        position: 'fixed',
+        left: `${pos.left}px`,
+        top: `${pos.top}px`,
+        width: `${pos.width}px`,
+        maxHeight: '55vh',
+        zIndex: 9999,
+      }}
       className="rounded-xl border border-luxury-border bg-luxury-charcoal shadow-lg overflow-y-auto"
     >
       {items.map((item) => (
