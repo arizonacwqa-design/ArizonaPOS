@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useState, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, X, Printer, ChevronDown, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
@@ -37,6 +38,10 @@ export default function Purchases() {
   const [expandedBills, setExpandedBills] = useState({});
   const [printBill, setPrintBill] = useState(null);
   const printTriggered = useRef(false);
+  const inputRefs = useRef({});
+  const setInputRef = useCallback((key) => (el) => {
+    if (el) inputRefs.current[key] = el;
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -282,6 +287,7 @@ export default function Purchases() {
                     <td className="py-1.5 px-2">
                       <div className="relative">
                         <input
+                          ref={setInputRef(row.key)}
                           className="input-luxury text-sm py-2"
                           value={row.searchText}
                           onChange={(e) => {
@@ -316,39 +322,34 @@ export default function Purchases() {
                           onBlur={() => setTimeout(() => updateRow(row.key, { showDropdown: false }), 200)}
                           placeholder="Search item or scan barcode..."
                         />
-                        {row.showDropdown && filteredItems.length > 0 && (
-                          <div className="absolute z-50 mt-1 w-full rounded-xl border border-luxury-border bg-luxury-charcoal shadow-lg max-h-[55vh] overflow-y-auto">
-                            {filteredItems.map((item) => (
-                              <button
-                                key={item.id}
-                                type="button"
-                                onMouseDown={() => {
-                                  updateRow(row.key, {
-                                    inventory_item_id: item.id,
-                                    searchText: item.name,
-                                    showDropdown: false,
+                        {row.showDropdown && filteredItems.length > 0 && inputRefs.current[row.key] && (
+                          createPortal(
+                            <DropdownPortal
+                              inputEl={inputRefs.current[row.key]}
+                              items={filteredItems}
+                              onSelect={(item) => {
+                                updateRow(row.key, {
+                                  inventory_item_id: item.id,
+                                  searchText: item.name,
+                                  showDropdown: false,
+                                });
+                                supabase
+                                  .from('inventory_purchases')
+                                  .select('unit_cost')
+                                  .eq('inventory_item_id', item.id)
+                                  .order('created_at', { ascending: false })
+                                  .limit(1)
+                                  .maybeSingle()
+                                  .then(({ data }) => {
+                                    if (data?.unit_cost) {
+                                      updateRow(row.key, { unit_cost: data.unit_cost });
+                                    }
                                   });
-                                  supabase
-                                    .from('inventory_purchases')
-                                    .select('unit_cost')
-                                    .eq('inventory_item_id', item.id)
-                                    .order('created_at', { ascending: false })
-                                    .limit(1)
-                                    .maybeSingle()
-                                    .then(({ data }) => {
-                                      if (data?.unit_cost) {
-                                        updateRow(row.key, { unit_cost: data.unit_cost });
-                                      }
-                                    });
-                                }}
-                                className="w-full text-left py-3 px-4 text-sm text-white hover:bg-gold-600/15 hover:text-gold-300 border-b border-luxury-border/50 last:border-b-0"
-                              >
-                                <span className="font-medium">{item.name}</span>
-                                {item.barcode && <span className="text-luxury-muted ml-2 text-xs">#{item.barcode}</span>}
-                                <span className="text-luxury-muted ml-auto text-xs">{formatStock(item)}</span>
-                              </button>
-                            ))}
-                          </div>
+                              }}
+                              formatStock={formatStock}
+                            />,
+                            document.body
+                          )
                         )}
                         {selectedItem && (
                           <p className="mt-0.5 text-[11px] text-amber-300">
@@ -504,6 +505,38 @@ export default function Purchases() {
       </div>
 
       <PurchasePrint purchase={printBill} items={printBill?.purchase_items || []} />
+    </div>
+  );
+}
+
+function DropdownPortal({ inputEl, items, onSelect, formatStock }) {
+  const rect = inputEl.getBoundingClientRect();
+  const style = {
+    position: 'fixed',
+    left: `${rect.left}px`,
+    top: `${rect.bottom + 4}px`,
+    width: `${rect.width}px`,
+    maxHeight: '55vh',
+    zIndex: 9999,
+  };
+
+  return (
+    <div
+      style={style}
+      className="rounded-xl border border-luxury-border bg-luxury-charcoal shadow-lg overflow-y-auto"
+    >
+      {items.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          onMouseDown={() => onSelect(item)}
+          className="w-full text-left py-3 px-4 text-sm text-white hover:bg-gold-600/15 hover:text-gold-300 border-b border-luxury-border/50 last:border-b-0"
+        >
+          <span className="font-medium">{item.name}</span>
+          {item.barcode && <span className="text-luxury-muted ml-2 text-xs">#{item.barcode}</span>}
+          <span className="text-luxury-muted ml-auto text-xs">{formatStock(item)}</span>
+        </button>
+      ))}
     </div>
   );
 }
